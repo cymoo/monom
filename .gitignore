@@ -1,0 +1,25 @@
+.DS_Store
+.env
+*.py[co]
+venv/
+env/
+env*
+dist/
+build/
+*.egg
+*.egg-info/
+.tox/
+__pycache__/
+.cache/
+.pytest_cache/
+.mypy_cache/
+.idea/
+.vscode
+docs/_build/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+*,cover
+
