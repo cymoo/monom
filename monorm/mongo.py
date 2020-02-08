@@ -26,7 +26,7 @@ class Cursor(PymongoCursor):
 
     def __next__(self) -> T:
         rv = super().__next__()
-        return self.model_cls.from_query(rv)
+        return self.model_cls.from_document(rv)
 
 
 # noinspection PyShadowingBuiltins
@@ -67,7 +67,7 @@ class CollectionMixin:
     def find_one(cls: Type[T], filter: dict = None, *args, **kw) -> Optional[T]:
         result = cls.get_collection().find_one(filter, *args, **kw)
         if result is not None:
-            return cls.from_query(result)
+            return cls.from_document(result)
 
     @classmethod
     def find(cls: Type[T], *args, **kw) -> Union[Cursor, Iterable[T]]:
@@ -146,7 +146,7 @@ class CollectionMixin:
             filter, projection=projection, sort=sort, session=session, **kw
         )
         if result is not None:
-            return cls.from_query(result)
+            return cls.from_document(result)
 
     @classmethod
     def find_one_and_replace(cls: Type[T],
@@ -164,7 +164,7 @@ class CollectionMixin:
             session=session, **kw
         )
         if result is not None:
-            return cls.from_query(result)
+            return cls.from_document(result)
 
     @classmethod
     def find_one_and_update(cls: Type[T],
@@ -181,7 +181,7 @@ class CollectionMixin:
             array_filters=array_filters, session=session, **kw
         )
         if result is not None:
-            return cls.from_query(result)
+            return cls.from_document(result)
 
     #################################
     # Aggregation
@@ -216,7 +216,7 @@ class Model(BaseModel, CollectionMixin):
 
     def __init__(self, **kw):
         super().__init__(**kw)
-        self.can_save = True
+        self._can_save = True
 
     @property
     def pk(self) -> Optional[Any]:
@@ -233,7 +233,7 @@ class Model(BaseModel, CollectionMixin):
         :return This object with the `pk` property filled if it wasn't already.
         """
 
-        if not self.can_save:
+        if not self._can_save:
             raise RuntimeError("The document from query operations cannot be saved (fields may be projected).")
 
         collection = type(self).get_collection()
@@ -244,9 +244,10 @@ class Model(BaseModel, CollectionMixin):
         return self
 
     @classmethod
-    def from_query(cls, data: MutableMapping):
-        obj = cls.from_data_unchanged(data)
-        obj.can_save = False
+    def from_document(cls, doc: MutableMapping):
+        """Construct an instance of this class from the given document."""
+        obj = cls.from_data(doc)
+        obj._can_save = False
         return obj
 
     @classmethod

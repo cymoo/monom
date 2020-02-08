@@ -111,7 +111,7 @@ class Field:
                                  'did you filter it out using projection query?'.format(self.name)) from None
 
         if isinstance(self, EmbeddedField):
-            return self.model.from_data_unchanged(value)
+            return self.model.from_data(value)
         elif isinstance(self, ArrayField):
             return self._walk_list(value)
         else:
@@ -256,7 +256,7 @@ class ArrayField(ListField):
 
             if isinstance(field, EmbeddedField):
                 cls = field.model
-                return [cls.from_data_unchanged(value) for value in vals]
+                return [cls.from_data(value) for value in vals]
 
             if isinstance(field, ArrayField):
                 return [walk(field, value) for value in vals]
