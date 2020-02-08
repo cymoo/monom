@@ -292,6 +292,12 @@ class EmbeddedField(DictField):
         return {name: getattr(self.model, name) for name in field_names}
 
     def convert(self, obj: Any) -> Optional[MutableMapping]:
+        if isinstance(obj, self.model):
+            # noinspection PyAttributeOutsideInit
+            # we can safely skip `convert` and 'validate` because it must have been done before.
+            self._skip_validate = True
+            return obj.to_dict()
+
         obj = super().convert(obj)
         if obj is None:
             return
@@ -314,6 +320,9 @@ class EmbeddedField(DictField):
         return rv
 
     def validate(self, obj: Optional[MutableMapping]) -> None:
+        if hasattr(self, '_skip_validate'):
+            return
+
         super().validate(obj)
         if obj is None:
             return
