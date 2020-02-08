@@ -561,20 +561,10 @@ def test_model_iter():
     assert isinstance(obj, abc.Iterable)
 
     obj_iter = iter(obj)
-    item1 = next(obj_iter)
-    item2 = next(obj_iter)
-    item3 = next(obj_iter)
+    assert list(obj_iter) == ['f1', 'f2', 'f3']
 
-    assert item1 == 1
-
-    assert isinstance(item2, SubModel)
-    assert item2.f == 2
-
-    assert all([isinstance(it, SubModel) for it in item3])
-    assert item3[1].f == 4
-
-    with pytest.raises(StopIteration):
-        next(obj_iter)
+    obj_iter1 = iter(obj.f2)
+    assert list(obj_iter1) == ['f']
 
 
 def test_model_to_dict():
@@ -659,7 +649,7 @@ def test_model_from_data_directly():
         f1: int
         f2: List[str]
 
-    obj = MainModel.from_data_unchanged({'f1': [1, 2, 3], 'f2': 13})
+    obj = MainModel.from_data({'f1': [1, 2, 3], 'f2': 13})
     with pytest.raises(ValueError):
         _ = obj.f2
 
