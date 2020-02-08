@@ -217,6 +217,32 @@ class TestEmbeddedField:
         with pytest.raises(AttributeError):
             _ = obj.f1.f3
 
+    def test_feed_with_embedded_model_obj(self):
+        class SubModel(EmbeddedModel):
+            f1: str
+
+        class MainModel(BaseModel):
+            f1: SubModel
+
+        obj = MainModel(f1=SubModel(f1='hello'))
+        assert obj.f1.f1 == 'hello'
+        obj.f1 = SubModel(f1='hi')
+        assert obj.f1.f1 == 'hi'
+
+    def test_feed_with_embedded_model_obj_list(self):
+        class SubModel(EmbeddedModel):
+            f1: str
+
+        class MainModel(BaseModel):
+            f1: List[SubModel]
+
+        obj = MainModel(f1=[SubModel(f1='a'), SubModel(f1='b'), SubModel(f1='c')])
+        assert isinstance(obj.f1[0], SubModel)
+        assert obj.f1[1].f1 == 'b'
+
+        obj.f1 = [SubModel(f1='1'), SubModel(f1='2'), SubModel(f1='3')]
+        assert obj.f1[1].f1 == '2'
+
     def test_pass_in_wrong_type(self):
         with pytest.raises(TypeError) as err:
             class Foo:
@@ -560,8 +586,11 @@ def test_model_to_dict():
         f2: SubModel
         f3: List[SubModel]
 
-    obj = MainModel(f1=1, f2={'f': 2}, f3=[{'f': 3}])
-    assert obj.to_dict() == {'f1': 1, 'f2': {'f': 2}, 'f3': [{'f': 3}]}
+    obj1 = MainModel(f1=1, f2={'f': 2}, f3=[{'f': 3}])
+    assert obj1.to_dict() == {'f1': 1, 'f2': {'f': 2}, 'f3': [{'f': 3}]}
+
+    obj1 = MainModel(f1=1, f2=SubModel(f=2), f3=[SubModel(f=3)])
+    assert obj1.to_dict() == {'f1': 1, 'f2': {'f': 2}, 'f3': [{'f': 3}]}
 
 
 def test_model_to_json():
@@ -576,6 +605,10 @@ def test_model_to_json():
     obj = MainModel(f1=1, f2={'f': 2}, f3=[{'f': 3}])
     j_data = obj.to_json()
     assert isinstance(j_data, str)
+
+    obj1 = MainModel(f1=1, f2=SubModel(f=2), f3=[SubModel(f=3)])
+    j_data1 = obj1.to_json()
+    assert isinstance(j_data1, str)
 
 
 def test_model_bypass_conversion():
