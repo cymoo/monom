@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from datetime import datetime
-from typing import get_type_hints, Any, MutableMapping, Type, Union, Callable, List, Generator
+from typing import get_type_hints, Any, MutableMapping, Type, Union, Callable, List, Iterable
 
 from bson.json_util import dumps
 from bson.objectid import ObjectId
@@ -177,17 +177,14 @@ class BaseModel(metaclass=ModelType):
         return data
 
     @classmethod
-    def from_data_unchanged(cls, data: MutableMapping):
+    def from_data(cls, data: MutableMapping):
+        """Construct an instance of this class from the given data; bypass conversion and validation"""
         obj = cls(bypass_conversion=True, bypass_validation=True)
         obj._data = data
         return obj
 
-    def __iter__(self):
-        return self._iter_model()
-
-    def _iter_model(self) -> Generator:
-        for key in self._data.keys():
-            yield getattr(self, key)
+    def __iter__(self) -> Iterable[str]:
+        return iter(self._data)
 
 
 class EmbeddedModel(BaseModel):
