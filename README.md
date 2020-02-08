@@ -3,7 +3,7 @@
 ## Installation
 
 ```bash
-pip install monorm
+$ pip install monorm
 ```
 
 ## About
@@ -395,7 +395,7 @@ Using this style, you can pass `name` (`alias` aka), `required`, `default`, `con
 To run the test suite, ensure you are running a local MongoDB instance on the default port and have pytest installed.
 
 ```bash
-pytest
+$ pytest
 ```
 
 ## Dependencies
