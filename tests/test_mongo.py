@@ -69,9 +69,9 @@ class TestSave:
         post.save()
         assert post.pk == pk
 
-    def test_cannot_save_query_result(self, db_populated):
+    def test_cannot_save_query_result_without_an__id(self, db_populated):
         Post.set_db(db_populated)
-        post = Post.find_one()
+        post = Post.find_one({}, {'_id': False})
         with pytest.raises(RuntimeError):
             post.save()
 
@@ -283,13 +283,13 @@ class TestQuery:
         with pytest.raises(StopIteration):
             next(rv)
 
-    def test_query_result_cannot_be_saved(self, db_populated):
+    def test_query_result_can_be_saved_again(self, db_populated):
         Post.set_db(db_populated)
 
         post = Post.find_one()
-        with pytest.raises(RuntimeError):
-            post.title = 'foobar'
-            post.save()
+        post.title = 'foobar'
+        post.save()
+        assert Post.find_one({'_id': post.pk}).title == 'foobar'
 
 
 class TestDelete:

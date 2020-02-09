@@ -216,7 +216,7 @@ class Model(BaseModel, CollectionMixin):
 
     def __init__(self, **kw):
         super().__init__(**kw)
-        self._can_save = True
+        self._state = 'before_save'
 
     @property
     def pk(self) -> Optional[Any]:
@@ -228,26 +228,31 @@ class Model(BaseModel, CollectionMixin):
 
         If there is no value for the primary key on this Model instance, the
         instance will be inserted into MongoDB. Otherwise, the entire document
-        will be replaced with this version (upserting if necessary).
+        will be replaced with this version.
 
         :return This object with the `pk` property filled if it wasn't already.
         """
 
-        if not self._can_save:
-            raise RuntimeError("The document from query operations cannot be saved (fields may be projected).")
-
+        state = self._state
         collection = type(self).get_collection()
-        if self.pk is None:
+
+        if state == 'before_save':
             collection.insert_one(self.to_dict(), **kw)
-        else:
-            collection.replace_one({'_id': self.pk}, self.to_dict(), upsert=True, **kw)
+            self._state = 'after_save'
+        elif state == 'after_save':
+            collection.replace_one({'_id': self.pk}, self.to_dict(), **kw)
+        elif state == 'from_document':
+            if self.pk is None:
+                raise RuntimeError("The document without an '_id' cannot be saved.")
+            collection.replace_one({'_id': self.pk}, self.to_dict(), **kw)
+
         return self
 
     @classmethod
     def from_document(cls, doc: MutableMapping):
         """Construct an instance of this class from the given document."""
         obj = cls.from_data(doc)
-        obj._can_save = False
+        obj._state = 'from_document'
         return obj
 
     @classmethod
