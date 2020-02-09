@@ -155,7 +155,7 @@ This model instance is iterable.
 
 * `set_db(db)`
 
-Pass a `pymongo:database.Database` to the model.
+Pass a `pymongo.database.Database` to the model.
 
 * `set_collection(collection)`
 
@@ -401,7 +401,7 @@ $ pytest
 ## Dependencies
 
 * Python >= 3.6
-* pymongo >= 3.7
+* pymongo >= 3.zzzzzz
 
 ## License
 
