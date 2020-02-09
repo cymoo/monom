@@ -147,10 +147,6 @@ Return a dict corresponding to the model instance.
 
 Return a json string. Some specific types (`ObjectId`, `datetime`, etc.) will be handled correctly.
 
-* `__iter__()`
-
-This model instance is iterable.
-
 #### Class Methods
 
 * `set_db(db)`
@@ -176,6 +172,24 @@ It proxies a subset of methods in `pymongo.collection:Collection`, which will pe
 * `insert_one`, `insert_many`, `replace_one`, `find_one_and_replace` will perform data cleaning.
 
 * `find_one`, `find`, `find_one_and_delete`, `find_one_and_replace`, `find_one_and_update` will convert query results to the corresponding model object.
+
+__`find` returns a `Cursor` of model instances instead of dicts. Before dump your documents to json, remember to do a small conversion.__
+
+```python
+from monorm import *
+
+class BinData(Model):
+    name: str
+    data: bytes
+
+BinData.set_db(MongoClient().get_database('posts'))
+BinData(name='foo', data=b'abc').save()
+BinData(name='bar', data=b'xyz').save()
+
+json_dumps([bd.to_dict() for bd in BinData.find()])
+# or call pymongo's methods directly
+json_dumps(BinData.get_collection().find())
+```
 
 -----
 
@@ -401,7 +415,7 @@ $ pytest
 ## Dependencies
 
 * Python >= 3.6
-* pymongo >= 3.zzzzzz
+* pymongo >= 3.7
 
 ## License
 
