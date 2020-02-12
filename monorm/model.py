@@ -157,7 +157,7 @@ class BaseModel(metaclass=ModelType):
                  bypass_conversion: bool = False,
                  bypass_validation: bool = False,
                  **kw):
-        self._data = self.clean(kw, bypass_conversion, bypass_validation)
+        self._data = self._clean(kw, bypass_conversion, bypass_validation)
 
     # noinspection PyCallByClass
     def to_json(self, *arg, **kw) -> str:
@@ -167,10 +167,10 @@ class BaseModel(metaclass=ModelType):
         return self._data
 
     @classmethod
-    def clean(cls,
-              data: MutableMapping,
-              bypass_conversion: bool = False,
-              bypass_validation: bool = False) -> MutableMapping:
+    def _clean(cls,
+               data: MutableMapping,
+               bypass_conversion: bool = False,
+               bypass_validation: bool = False) -> MutableMapping:
         root = EmbeddedField().init_root(cls)
         if not bypass_conversion:
             data = root.convert(data)
@@ -184,6 +184,14 @@ class BaseModel(metaclass=ModelType):
         obj = cls(bypass_conversion=True, bypass_validation=True)
         obj._data = data
         return obj
+
+    def __hash__(self):
+        return hash(self._data)
+
+    def __eq__(self, other):
+        if not isinstance(other, BaseModel):
+            return False
+        return self._data == other._data
 
     def __iter__(self) -> Iterable[str]:
         return iter(self._data)

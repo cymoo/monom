@@ -9,11 +9,11 @@ from pymongo.database import Database
 from pymongo.results import InsertOneResult, InsertManyResult, UpdateResult, DeleteResult
 
 from .fields import *
-from .model import BaseModel
+from .model import BaseModel, ModelType
 from .utils import pluralize, info, normalize_indexes, default_index_name, have_same_shape, not_none, warn
 
 __all__ = [
-    'Model',
+    'MongoModel',
 ]
 
 
@@ -30,8 +30,8 @@ class Cursor(PymongoCursor):
         return self.model_cls.from_document(rv)
 
 
-# noinspection PyShadowingBuiltins
-class CollectionMixin:
+# noinspection PyShadowingBuiltins,PyMethodParameters
+class CollectionMixin(type):
     """Proxy frequently-used methods of :class:`pymongo:collection:Collection`.
     """
 
@@ -39,23 +39,21 @@ class CollectionMixin:
     # Insertion
     #################################
 
-    @classmethod
     def insert_one(cls: Type[T],
                    document: MutableMapping,
                    bypass_document_validation: bool = False,
                    session=None) -> InsertOneResult:
-        doc = cls.clean(document, bypass_validation=bypass_document_validation)
+        doc = cls._clean(document, bypass_validation=bypass_document_validation)
         return cls.get_collection().insert_one(
             doc, bypass_document_validation=bypass_document_validation, session=session
         )
 
-    @classmethod
     def insert_many(cls: Type[T],
                     documents: Iterable[MutableMapping],
                     ordered: bool = True,
                     bypass_document_validation: bool = False,
                     session=None) -> InsertManyResult:
-        docs = [cls.clean(document, bypass_validation=bypass_document_validation) for document in documents]
+        docs = [cls._clean(document, bypass_validation=bypass_document_validation) for document in documents]
         return cls.get_collection().insert_many(
             docs, ordered=ordered, bypass_document_validation=bypass_document_validation, session=session
         )
@@ -64,13 +62,11 @@ class CollectionMixin:
     # Query
     #################################
 
-    @classmethod
     def find_one(cls: Type[T], filter: dict = None, *args, **kw) -> Optional[T]:
         result = cls.get_collection().find_one(filter, *args, **kw)
         if result is not None:
             return cls.from_document(result)
 
-    @classmethod
     def find(cls: Type[T], *args, **kw) -> Union[Cursor, Iterable[T]]:
         return Cursor(cls, cls.get_collection(), *args, **kw)
 
@@ -78,11 +74,9 @@ class CollectionMixin:
     # Deletion
     #################################
 
-    @classmethod
     def delete_one(cls: Type[T], filter: dict, collation: Collation = None, session=None) -> DeleteResult:
         return cls.get_collection().delete_one(filter, collation=collation, session=session)
 
-    @classmethod
     def delete_many(cls: Type[T], filter: dict, collation: Collation = None, session=None) -> DeleteResult:
         return cls.get_collection().delete_many(filter, collation=collation, session=session)
 
@@ -90,7 +84,6 @@ class CollectionMixin:
     # Update
     #################################
 
-    @classmethod
     def replace_one(cls: Type[T],
                     filter: dict,
                     replacement: MutableMapping,
@@ -98,13 +91,12 @@ class CollectionMixin:
                     bypass_document_validation: bool = False,
                     collation: Collation = None,
                     session=None) -> UpdateResult:
-        doc = cls.clean(replacement, bypass_validation=bypass_document_validation)
+        doc = cls._clean(replacement, bypass_validation=bypass_document_validation)
         return cls.get_collection().replace_one(
             filter, doc, upsert=upsert, bypass_document_validation=bypass_document_validation,
             collation=collation, session=session
         )
 
-    @classmethod
     def update_one(cls: Type[T],
                    filter: dict,
                    update: MutableMapping,
@@ -119,7 +111,6 @@ class CollectionMixin:
             collation=collation, array_filters=array_filters, session=session
         )
 
-    @classmethod
     def update_many(cls: Type[T],
                     filter: dict,
                     update: MutableMapping,
@@ -138,7 +129,6 @@ class CollectionMixin:
     # FindAndXXX
     #################################
 
-    @classmethod
     def find_one_and_delete(cls: Type[T],
                             filter: dict,
                             projection: Union[list, dict] = None,
@@ -151,7 +141,6 @@ class CollectionMixin:
         if result is not None:
             return cls.from_document(result)
 
-    @classmethod
     def find_one_and_replace(cls: Type[T],
                              filter: dict,
                              replacement: MutableMapping,
@@ -161,7 +150,7 @@ class CollectionMixin:
                              upsert: bool = False,
                              return_document: bool = ReturnDocument.BEFORE,
                              session=None, **kw) -> Optional[T]:
-        doc = cls.clean(replacement, bypass_validation=bypass_document_validation)
+        doc = cls._clean(replacement, bypass_validation=bypass_document_validation)
         result = cls.get_collection().find_one_and_replace(
             filter, doc, projection=projection, sort=sort, upsert=upsert, return_document=return_document,
             session=session, **kw
@@ -169,7 +158,6 @@ class CollectionMixin:
         if result is not None:
             return cls.from_document(result)
 
-    @classmethod
     def find_one_and_update(cls: Type[T],
                             filter: dict,
                             update: dict,
@@ -192,24 +180,24 @@ class CollectionMixin:
     # Aggregation
     #################################
 
-    @classmethod
     def aggregate(cls: Type[T], pipeline: List[dict], session=None, **kw) -> CommandCursor:
         return cls.get_collection().aggregate(pipeline, session, **kw)
 
-    @classmethod
     def estimated_document_count(cls: Type[T], **kw) -> int:
         return cls.get_collection().estimated_document_count(**kw)
 
-    @classmethod
     def count_documents(cls: Type[T], filter: dict, session=None, **kw) -> int:
         return cls.get_collection().count_documents(filter, session=session, **kw)
 
-    @classmethod
     def distinct(cls: Type[T], key: str, filter: dict = None, session=None, **kw) -> list:
         return cls.get_collection().distinct(key, filter=filter, session=session, **kw)
 
 
-class Model(BaseModel, CollectionMixin):
+class MongoModelType(ModelType, CollectionMixin):
+    """Base class of `MongoModel`."""
+
+
+class MongoModel(BaseModel, metaclass=MongoModelType):
     # Automatic index creation or deletion can be disabled by setting this flag to false.
     # Index creation may be performed as part of a deployment system when in production
     auto_build_index: bool = True

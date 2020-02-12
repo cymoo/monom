@@ -4,7 +4,7 @@ An Object-Document-Mapper for MongoDB with type hints.
 """
 
 from .model import BaseModel, EmbeddedModel
-from .mongo import Model
+from .mongo import MongoModel as Model
 from .helpers import switch_collection, switch_db
 from .utils import DotSon, get_logger, set_logger
 
