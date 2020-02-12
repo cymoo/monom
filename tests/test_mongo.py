@@ -1,15 +1,10 @@
-from datetime import datetime
-from typing import List
-
 import pytest
-from bson.objectid import ObjectId
-from pymongo import MongoClient
 from pymongo.collection import ReturnDocument
 from pymongo.command_cursor import CommandCursor
 from pymongo.results import DeleteResult, UpdateResult
 
-from monorm import Model, EmbeddedModel
-from monorm.fields import ValidationError
+from monorm import *
+from monorm.fields import *
 from monorm.mongo import Cursor
 from monorm.utils import random_lower_letters
 
@@ -17,12 +12,21 @@ from monorm.utils import random_lower_letters
 class User(EmbeddedModel):
     first_name: str
     last_name: str
+    motto: str = 'come on'
+
+
+class Comment(EmbeddedModel):
+    user: User
+    content: str
+    created_on: datetime = datetime.utcnow
+    extra: int = 42
 
 
 class Post(Model):
     user: User
     title: str
     content: str
+    comments: List[Comment]
     tags: List[str]
     visible: bool = True
     created_on: datetime = datetime.utcnow
@@ -189,6 +193,92 @@ def test_set_collection(db):
     User.get_collection().drop()
 
 
+class SubDotNotationModel(EmbeddedModel):
+    f1: str
+    f2: List[int]
+    f3: list
+    f4: dict
+    f5: Any
+
+
+class MainDotNotationModel(Model):
+    f1: str
+    f2: SubDotNotationModel
+    f3: List[SubDotNotationModel]
+    f4: dict
+    f5: list
+    f6: Any
+    f7: List[List[SubDotNotationModel]]
+
+
+class TestParseDotNotation:
+    def test_dict_field(self):
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f4'), DictField)
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f4.a'), AnyField)
+        with pytest.raises(ValueError):
+            assert MainDotNotationModel._parse_dot_notation('f4.0')
+
+    def test_dict_field_in_embedded_field(self):
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f2.f4'), DictField)
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f2.f4.a'), AnyField)
+        with pytest.raises(ValueError):
+            assert MainDotNotationModel._parse_dot_notation('f2.f4.0')
+
+    def test_dict_field_in_array_field(self):
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f3.0.f4'), DictField)
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f3.2111.f4.a'), AnyField)
+        with pytest.raises(ValueError):
+            assert MainDotNotationModel._parse_dot_notation('f3.123.f4.0')
+
+    def test_list_field(self):
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f5'), ListField)
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f5.2341'), AnyField)
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f5.$'), AnyField)
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f5.$[]'), AnyField)
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f5.$[foobar]'), AnyField)
+        with pytest.raises(ValueError):
+            assert MainDotNotationModel._parse_dot_notation('f5.foobar')
+
+    def test_embedded_field(self):
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f2.f1'), StringField)
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f2.f2.0'), IntField)
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f2.f3.0'), AnyField)
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f2.f4.a'), AnyField)
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f2.f5'), AnyField)
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f2.f5.a'), AnyField)
+        with pytest.raises(ValueError):
+            MainDotNotationModel._parse_dot_notation('f2.f2.0.a')
+
+    def test_array_field(self):
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f3.0.f3'), ListField)
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f7.0'), ArrayField)
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f7.0.$'), EmbeddedField)
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f7.0.$.f3.$[]'), AnyField)
+
+        with pytest.raises(ValueError):
+            MainDotNotationModel._parse_dot_notation('f7.$[].$[foo].0')
+
+    def test_any_field(self):
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f2.f5.a'), AnyField)
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f3.0.f5.a'), AnyField)
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f6.a'), AnyField)
+        assert isinstance(MainDotNotationModel._parse_dot_notation('f6.a.b'), AnyField)
+
+    def test_invalid_identifier(self):
+        with pytest.raises(ValueError):
+            MainDotNotationModel._parse_dot_notation('$]')
+            MainDotNotationModel._parse_dot_notation('$[')
+            MainDotNotationModel._parse_dot_notation('$a')
+            MainDotNotationModel._parse_dot_notation('f1.$a')
+            MainDotNotationModel._parse_dot_notation('f2.$a')
+            MainDotNotationModel._parse_dot_notation('f3.0.$a')
+
+    def test_extra_field_warning(self, caplog):
+        MainDotNotationModel._parse_dot_notation('foo')
+        for record in caplog.records:
+            assert 'not defined' in record.message
+
+
 class TestInsert:
     def test_insert_one(self, db):
         Post.set_db(db)
@@ -326,6 +416,7 @@ class TestDelete:
         assert rv.deleted_count == 0
 
 
+# TODO: add test cases for field update operators like '$inc', 'rename', 'unset' etc...
 class TestUpdate:
     def test_replace_one(self, db_populated):
         Post.set_db(db_populated)
@@ -384,6 +475,40 @@ class TestUpdate:
 
         rv = Post.update_one({'user.first_name': 'foo42'}, {'$set': {'title': 'hello world'}})
         assert isinstance(rv, UpdateResult)
+
+    # TODO: verbose and incomplete
+    def test_update_one_with_cleaning(self, db_populated):
+        Post.set_db(db_populated)
+
+        rv = Post.find_one_and_update(
+            {'user.first_name': 'foo42'},
+            {'$set': {'user': {'first_name': 'Foo', 'last_name': 'Bar'}}},
+            return_document=ReturnDocument.AFTER
+        )
+        assert rv.user.motto == 'come on'
+
+        with pytest.raises(ValidationError):
+            Post.find_one_and_update(
+                {'user.first_name': 'foo42'},
+                {'$set': {'user': {'first_name': 123, 'last_name': 'Bar'}}},
+            )
+
+        comment = Comment(user={'first_name': 'foo', 'last_name': 'bar'})
+        rv = Post.find_one_and_update(
+            {'user.first_name': 'foo13'},
+            {'$push': {'comments': comment}},
+            return_document=ReturnDocument.AFTER
+        )
+        assert isinstance(rv.comments[0].created_on, datetime)
+
+        comment1 = Comment(user={'first_name': 'foo', 'last_name': 'bar'})
+        comment2 = Comment(user={'first_name': 'foo', 'last_name': 'bar'})
+        rv = Post.find_one_and_update(
+            {'user.first_name': 'foo13'},
+            {'$push': {'comments': {'$each': [comment1, comment2]}}},
+            return_document=ReturnDocument.AFTER
+        )
+        assert rv.comments[1].extra == 42
 
     def test_update_many(self, db_populated):
         Post.set_db(db_populated)

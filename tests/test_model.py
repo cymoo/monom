@@ -5,6 +5,7 @@ from typing import List, Any
 
 import pytest
 from bson.objectid import ObjectId
+from bson.son import SON
 
 from monorm import BaseModel, EmbeddedModel
 from monorm.fields import *
@@ -160,27 +161,6 @@ class TestBaseField:
 
         with pytest.raises(ValidationError) as err:
             MM(f='abc')
-        assert 'must be one of types' in err.value.msg
-
-    def test_list_max_length(self):
-        class MM(BaseModel):
-            f = ListField(max_length=3)
-
-        MM(f=[1, 2])
-        MM(f=[1, 2, 3])
-        with pytest.raises(ValidationError) as err:
-            MM(f=[1, 2, 3, 4])
-        assert 'greater than' in err.value.msg
-
-    def test_list_min_length(self):
-        class MM(BaseModel):
-            f = ListField(min_length=3)
-
-        MM(f=[1, 2, 3, 4])
-        MM(f=[1, 2, 3])
-        with pytest.raises(ValidationError) as err:
-            MM(f=[1, 2])
-        assert 'less than' in err.value.msg
 
 
 def test_any_field():
@@ -242,6 +222,26 @@ class TestEmbeddedField:
 
         obj.f1 = [SubModel(f1='1'), SubModel(f1='2'), SubModel(f1='3')]
         assert obj.f1[1].f1 == '2'
+
+    def test_feed_with_embedded_model_skip_validate(self):
+        class SubModel(EmbeddedModel):
+            f1: str
+
+        class MainModel(BaseModel):
+            f1: str
+            f2: SubModel
+            f3: List[SubModel]
+
+        sub1 = SubModel(f1='foo')
+        sub2 = SubModel(f1='bar')
+        assert not hasattr(sub1.to_dict(), '_skip_validate')
+        assert not hasattr(sub2.to_dict(), '_skip_validate')
+
+        obj = MainModel(f1='foobar', f2=sub1)
+        assert hasattr(sub1.to_dict(), '_skip_validate')
+
+        obj.f3 = [sub2]
+        assert hasattr(sub2.to_dict(), '_skip_validate')
 
     def test_pass_in_wrong_type(self):
         with pytest.raises(TypeError) as err:
@@ -586,11 +586,13 @@ def test_model_to_dict():
 def test_model_to_json():
     class SubModel(EmbeddedModel):
         f: int
+        f2: datetime = datetime.utcnow
 
     class MainModel(BaseModel):
         f1: int
         f2: SubModel
         f3: List[SubModel]
+        f4: ObjectId = ObjectId
 
     obj = MainModel(f1=1, f2={'f': 2}, f3=[{'f': 3}])
     j_data = obj.to_json()
@@ -655,7 +657,7 @@ def test_model_from_data_directly():
 
 
 class TestModelDictClass:
-    def test_with_dict(self):
+    def test_dict_type(self):
         class SubModel(EmbeddedModel):
             b: int = 1
             c: int = 2
@@ -673,11 +675,11 @@ class TestModelDictClass:
         assert list(obj.d.to_dict().keys()) == ['b', 'c', 'a']
         assert list(obj.e[0].to_dict().keys()) == ['b', 'c', 'a']
 
-        assert type(obj.to_dict()) == dict
-        assert type(obj.d.to_dict()) == dict
-        assert type(obj.e[0].to_dict()) == dict
+        assert type(obj.to_dict()) == OrderedDict
+        assert type(obj.d.to_dict()) == OrderedDict
+        assert type(obj.e[0].to_dict()) == OrderedDict
 
-    def test_with_ordered_dict(self):
+    def test_dict_type_with_son(self):
         class SubModel(EmbeddedModel):
             b: int = 1
             c: int = 2
@@ -690,12 +692,24 @@ class TestModelDictClass:
             d: SubModel = {}
             e: List[SubModel] = [{}, {}]
 
-        MainModel.dict_class = OrderedDict
-        SubModel.dict_class = OrderedDict
+        MainModel.dict_class = SON
+        SubModel.dict_class = SON
         obj = MainModel()
-        assert type(obj.to_dict()) == OrderedDict
-        assert type(obj.d.to_dict()) == OrderedDict
-        assert type(obj.e[0].to_dict()) == OrderedDict
+        assert type(obj.to_dict()) == SON
+        assert type(obj.d.to_dict()) == SON
+        assert type(obj.e[0].to_dict()) == SON
+
+
+def test_model_retain_none():
+    class MainModel(BaseModel):
+        f1: str
+        f2: int
+
+    MainModel.retain_none = True
+    obj = MainModel(f1=None, f2=13)
+    assert 'f1' in obj.to_dict()
+    obj.f1 = None
+    assert 'f1' in obj.to_dict()
 
 
 def test_model_ignore_none():
@@ -703,7 +717,10 @@ def test_model_ignore_none():
         f1: str
         f2: int
 
+    MainModel.retain_none = False
     obj = MainModel(f1=None, f2=13)
+    assert 'f1' not in obj.to_dict()
+    obj.f1 = None
     assert 'f1' not in obj.to_dict()
 
 
