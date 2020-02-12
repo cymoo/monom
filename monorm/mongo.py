@@ -8,8 +8,9 @@ from pymongo.cursor import Cursor as PymongoCursor
 from pymongo.database import Database
 from pymongo.results import InsertOneResult, InsertManyResult, UpdateResult, DeleteResult
 
+from .fields import *
 from .model import BaseModel
-from .utils import pluralize, info, normalize_indexes, default_index_name, have_same_shape, not_none
+from .utils import pluralize, info, normalize_indexes, default_index_name, have_same_shape, not_none, warn
 
 __all__ = [
     'Model',
@@ -112,6 +113,7 @@ class CollectionMixin:
                    collation: Collation = None,
                    array_filters: List[dict] = None,
                    session=None) -> UpdateResult:
+        update = cls.clean_update(update, bypass_document_validation)
         return cls.get_collection().update_one(
             filter, update, upsert=upsert, bypass_document_validation=bypass_document_validation,
             collation=collation, array_filters=array_filters, session=session
@@ -126,6 +128,7 @@ class CollectionMixin:
                     bypass_document_validation: bool = False,
                     collation: Collation = None,
                     session=None) -> UpdateResult:
+        update = cls.clean_update(update, bypass_document_validation)
         return cls.get_collection().update_many(
             filter, update, upsert=upsert, array_filters=array_filters,
             bypass_document_validation=bypass_document_validation, collation=collation, session=session
@@ -152,7 +155,7 @@ class CollectionMixin:
     def find_one_and_replace(cls: Type[T],
                              filter: dict,
                              replacement: MutableMapping,
-                             bypass_document_validation: bool = False,
+                             bypass_document_validation: bool = False,  # extra argument
                              projection: Union[list, dict] = None,
                              sort: List[tuple] = None,
                              upsert: bool = False,
@@ -170,12 +173,14 @@ class CollectionMixin:
     def find_one_and_update(cls: Type[T],
                             filter: dict,
                             update: dict,
+                            bypass_document_validation: bool = False,  # extra argument
                             projection: Union[list, dict] = None,
                             sort: List[tuple] = None,
                             upsert: bool = False,
                             return_document: bool = ReturnDocument.BEFORE,
                             array_filters: List[dict] = None,
                             session=None, **kw) -> Optional[T]:
+        update = cls.clean_update(update, bypass_document_validation)
         result = cls.get_collection().find_one_and_update(
             filter, update, projection=projection, sort=sort, upsert=upsert, return_document=return_document,
             array_filters=array_filters, session=session, **kw
@@ -284,6 +289,108 @@ class Model(BaseModel, CollectionMixin):
         if cls.auto_build_index:
             info('You may disable automatic index modification when in production.')
             cls._build_indexes()
+
+    @classmethod
+    def clean_update(cls, update: MutableMapping, bypass_validation: bool = False) -> MutableMapping:
+        if not isinstance(update, MutableMapping):
+            return update
+
+        # noinspection PyShadowingNames
+        def raise_invalid_type_error(field: Field, op: str) -> None:
+            raise ValidationError('not expect field type {!r} with {!r}'.format(type(field), op))
+
+        # noinspection PyShadowingNames
+        def check_dot_notation(op: str, doc: MutableMapping, field_type: Optional[Type[Field]] = None) -> None:
+            for notation in doc.keys():
+                field = cls._parse_dot_notation(notation)
+                if field_type is not None:
+                    if not isinstance(field, field_type):
+                        raise_invalid_type_error(field, op)
+
+        for op, doc in update.items():
+            if op == '$set':
+                for notation, value in doc.items():
+                    field = cls._parse_dot_notation(notation)
+                    new_value = field.convert(value)
+                    if not bypass_validation:
+                        field.validate(new_value)
+                    doc[notation] = new_value
+
+            elif op in ('$push', '$addToSet'):
+                for notation, value in doc.items():
+                    field = cls._parse_dot_notation(notation)
+                    if not isinstance(field, ListField):
+                        raise_invalid_type_error(field, op)
+                    if isinstance(field, ArrayField):
+                        item_field = field.field
+                        if isinstance(value, MutableMapping) and '$each' in value:
+                            values = value['$each']
+                            new_values = [item_field.convert(item) for item in values]
+                            if not bypass_validation:
+                                for new_value in new_values:
+                                    item_field.validate(new_value)
+                            value['$each'] = new_values
+                        else:
+                            new_value = item_field.convert(value)
+                            if not bypass_validation:
+                                item_field.validate(new_value)
+                            doc[notation] = new_value
+
+            # check dot notation and give warnings when necessary
+            elif op in ('$pop', '$pull', '$pullAll'):
+                check_dot_notation(op, doc, ListField)
+            elif op in ('$inc', '$mul'):
+                check_dot_notation(op, doc, NumberField)
+            elif op == '$currentDate':
+                check_dot_notation(op, doc, DateTimeField)
+            elif op in ('$min', '$max', '$rename', '$unset'):
+                check_dot_notation(op, doc)
+        return update
+
+    @staticmethod
+    def _is_array_placeholder(name: str):
+        return name == '$' or name.startswith('$[') and name.endswith(']')
+
+    @classmethod
+    def _parse_dot_notation(cls, name: str) -> Field:
+        def raise_parse_error(k: str, fld: Field):
+            raise ValueError('cannot parse {!r}; not expect {!r} after {!r}'.format(name, k, fld))
+
+        field = EmbeddedField().init_root(cls)
+        for key in name.split('.'):
+            if isinstance(field, AnyField):
+                return AnyField()
+
+            if type(field) == DictField:
+                if key.isidentifier():
+                    return AnyField()
+                else:
+                    raise_parse_error(key, field)
+
+            if type(field) == ListField:
+                if key.isdigit() or cls._is_array_placeholder(key):
+                    return AnyField()
+                else:
+                    raise_parse_error(key, field)
+
+            if key.isidentifier():
+                if isinstance(field, EmbeddedField):
+                    fields = field.fields
+                    if key in fields:
+                        field = fields[key]
+                    else:
+                        warn('{!r} not defined in model {!r}. Did you misspell it?'.format(key, field.model))
+                        return AnyField()
+                else:
+                    raise_parse_error(key, field)
+            elif key.isdigit() or cls._is_array_placeholder(key):
+                if isinstance(field, ArrayField):
+                    field = field.field
+                else:
+                    raise_parse_error(key, field)
+            else:
+                raise ValueError('cannot parse {!r}; not a valid identifier {!r}'.format(name, key))
+        return field
 
     @classmethod
     def _build_indexes(cls) -> None:
