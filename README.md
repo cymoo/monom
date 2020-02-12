@@ -133,9 +133,13 @@ If the value is a `callable`, it will be called on each saving or inserting.
 
 * `save()`
 
-Save the instance into MongoDB.
+Save the data into MongoDB.
 If there is no value for the primary key on this model instance, the instance will be inserted into MongoDB.
-Otherwise, the entire data will be replaced with this version.
+Otherwise, the entire data will be __replaced__ with this version.
+
+* `delete()`
+
+Delete the data from MongoDB.
 
 * `pk`
 

@@ -113,7 +113,7 @@ class CollectionMixin:
                    collation: Collation = None,
                    array_filters: List[dict] = None,
                    session=None) -> UpdateResult:
-        update = cls.clean_update(update, bypass_document_validation)
+        update = cls._clean_update(update, bypass_document_validation)
         return cls.get_collection().update_one(
             filter, update, upsert=upsert, bypass_document_validation=bypass_document_validation,
             collation=collation, array_filters=array_filters, session=session
@@ -128,7 +128,7 @@ class CollectionMixin:
                     bypass_document_validation: bool = False,
                     collation: Collation = None,
                     session=None) -> UpdateResult:
-        update = cls.clean_update(update, bypass_document_validation)
+        update = cls._clean_update(update, bypass_document_validation)
         return cls.get_collection().update_many(
             filter, update, upsert=upsert, array_filters=array_filters,
             bypass_document_validation=bypass_document_validation, collation=collation, session=session
@@ -180,7 +180,7 @@ class CollectionMixin:
                             return_document: bool = ReturnDocument.BEFORE,
                             array_filters: List[dict] = None,
                             session=None, **kw) -> Optional[T]:
-        update = cls.clean_update(update, bypass_document_validation)
+        update = cls._clean_update(update, bypass_document_validation)
         result = cls.get_collection().find_one_and_update(
             filter, update, projection=projection, sort=sort, upsert=upsert, return_document=return_document,
             array_filters=array_filters, session=session, **kw
@@ -253,6 +253,19 @@ class Model(BaseModel, CollectionMixin):
 
         return self
 
+    def delete(self, **kw) -> None:
+        """Delete the document from MongoDB"""
+
+        state = self._state
+        collection = type(self).get_collection()
+
+        if state == 'before_save':
+            raise RuntimeError('You cannot delete a document that was not saved.')
+        if self.pk is None:
+            raise RuntimeError("The document without an '_id' cannot be deleted.")
+
+        collection.delete_one({'_id': self.pk}, **kw)
+
     @classmethod
     def from_document(cls, doc: MutableMapping):
         """Construct an instance of this class from the given document."""
@@ -291,7 +304,7 @@ class Model(BaseModel, CollectionMixin):
             cls._build_indexes()
 
     @classmethod
-    def clean_update(cls, update: MutableMapping, bypass_validation: bool = False) -> MutableMapping:
+    def _clean_update(cls, update: MutableMapping, bypass_validation: bool = False) -> MutableMapping:
         if not isinstance(update, MutableMapping):
             return update
 

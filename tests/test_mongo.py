@@ -73,11 +73,47 @@ class TestSave:
         post.save()
         assert post.pk == pk
 
-    def test_cannot_save_query_result_without_an__id(self, db_populated):
+    def test_cannot_save_query_result_without_an_id(self, db_populated):
         Post.set_db(db_populated)
         post = Post.find_one({}, {'_id': False})
         with pytest.raises(RuntimeError):
             post.save()
+
+
+class TestDelete:
+    def test_delete(self, db):
+        Post.set_db(db)
+        post = Post(
+            user={'first_name': 'Foo', 'last_name': 'Bar'},
+            title='hello world',
+            content='wish world a better place',
+            tags=['life', 'art']
+        )
+        post.save()
+        post.delete()
+        assert Post.find_one({'title': 'hello world'}) is None
+
+    def test_delete_doc_from_query(self, db_populated):
+        Post.set_db(db_populated)
+        post = Post.find_one()
+        post.delete()
+
+    def test_delete_before_save(self, db):
+        Post.set_db(db)
+        post = Post(
+            user={'first_name': 'Foo', 'last_name': 'Bar'},
+            title='hello world',
+            content='wish world a better place',
+            tags=['life', 'art']
+        )
+        with pytest.raises(RuntimeError):
+            post.delete()
+
+    def test_delete_without_an_id(self, db_populated):
+        Post.set_db(db_populated)
+        post = Post.find_one({}, {'_id': False})
+        with pytest.raises(RuntimeError):
+            post.delete()
 
 
 class TestIndexes:
@@ -382,7 +418,7 @@ class TestQuery:
         assert Post.find_one({'_id': post.pk}).title == 'foobar'
 
 
-class TestDelete:
+class TestDelete1:
     def test_delete_one(self, db_populated):
         Post.set_db(db_populated)
 
