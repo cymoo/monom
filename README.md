@@ -12,9 +12,9 @@ Monorm is designed to manage your models clearly and easily, which is as simple 
 
 * schema declaration using type hints
 
-* schema validation
+* document validation on insert and update
 
-* field alias, index declaration, custom converter and validator
+* default value, field alias, index declaration, custom converter and validator
 
 * minimum api, least memory burden
 
@@ -61,6 +61,8 @@ db = MongoClient().get_database('posts')
 Post.set_db(db)
 post = Post(
     user={'name': 'Lucy', 'email': 'foo@example.com'},
+    # same as the above
+    # user=User(name='Lucy', email='foo@example.com'),
     title='hello world',
     content='monorm is awesome...',
     tags=['life', 'art']
@@ -133,7 +135,7 @@ If the value is a `callable`, it will be called on each saving or inserting.
 
 Save the instance into MongoDB.
 If there is no value for the primary key on this model instance, the instance will be inserted into MongoDB.
-Otherwise, the entire data will be replaced with this version (upserting if necessary).
+Otherwise, the entire data will be replaced with this version.
 
 * `pk`
 
@@ -141,7 +143,7 @@ An alias for the primary key (`_id` in MongoDB).
 
 * `to_dict()`
 
-Return a dict corresponding to the model instance.
+Return an ordered dict containing the instance's data with the same order as the field definition order.
 
 * `to_json()`
 
@@ -169,7 +171,7 @@ Monorm adds no extra methods to operate MongoDB.
 
 It proxies a subset of methods in `pymongo.collection:Collection`, which will perform data cleaning and convert the data from query operations to the model object.
 
-* `insert_one`, `insert_many`, `replace_one`, `find_one_and_replace` will perform data cleaning.
+* `insert_one`, `insert_many`, `replace_one`, `update_one`, `update_many`, `find_one_and_update`, `find_one_and_replace` will perform data cleaning.
 
 * `find_one`, `find`, `find_one_and_delete`, `find_one_and_replace`, `find_one_and_update` will convert query results to the corresponding model object.
 
@@ -273,25 +275,40 @@ __Index declaration cannot appear in embedded model.__
 
 #### Options
 
-* `dict_class`: the underlying data of model instance are saved in a dict. You may change it to `collections.OrderedDict`, `bson.son.SON` or other compatible types. Default value is `dict`.
+* `dict_class`
 
-* `warn_extra_data`: whether checks extra data that aren't declared in the model and emits some warnings. Default value is `True`.
+The underlying data of model instance are saved in a ordered dict. You may change it to `bson.son.SON` or other compatible types.
+Default value is `collections.OrderedDict`.
 
-* `auto_build_index`: whether enables auto index creation or deletion; you may disable it when in production because index management may be performed as part of a deployment system. Default value is `True`.
+* `retain_none`
+
+Whether saves a `None` for the fields if they are absent in the document.
+Default value is `True`.
+
+* `warn_extra_data`
+
+Whether checks extra data that aren't declared in the model and emits some warnings.
+Default value is `True`.
+
+* `auto_build_index`
+
+Whether enables auto index creation or deletion.
+You may disable it when in production because index management may be performed as part of a deployment system.
+Default value is `True`.
 
 __Theses options can be set on `Model` or the subclass of `Model`; if set on `Model`, all subclasses will inherit them.__
 
 ```python
 from monorm import Model
-from collections import OrderedDict
+from bson.son import SON
 
-Model.dict_class = OrderedDict
+Model.dict_class = SON
 
 class User(Model):
     name: str
 
 user = User(name='foo')
-assert isinstance(user.to_dict(), OrderedDict)
+assert isinstance(user.to_dict(), SON)
 ```
 
 -----
@@ -400,7 +417,7 @@ Using this style, you can pass `name` (`alias` aka), `required`, `default`, `con
 
 ### Caveats
 
-* Inheritance of fields through OOP technique cannot work, for it will cause confusing relationships between model and embedded model.
+* Inheritance of fields through class inheritance cannot work, for it will cause confusing relationships between model and embedded model.
 
 * You'd better not mix type-hints style with django-orm style; if you insist on that the field definition order may not be reserved.
 
