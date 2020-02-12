@@ -9,6 +9,7 @@ from .utils import *
 __all__ = [
     'Field',
     'StringField',
+    'NumberField',
     'IntField',
     'FloatField',
     'BooleanField',
@@ -113,7 +114,7 @@ class Field:
         if isinstance(self, EmbeddedField):
             return self.model.from_data(value)
         elif isinstance(self, ArrayField):
-            return self._walk_list(value)
+            return self._convert_data_in_list_to_model(value)
         else:
             return value
 
@@ -121,11 +122,27 @@ class Field:
         value = self.convert(value)
         self.validate(value)
 
+        dk = instance.__dict__['_data']
         if value is not None:
-            instance.__dict__['_data'][self.name] = value
+            dk[self.name] = value
+        else:
+            if type(instance).retain_none:
+                dk[self.name] = None
 
     def __delete__(self, instance):
         instance.__dict__['_data'].pop(self.name, None)
+
+    def __str__(self):
+        string = []
+        if self.name:
+            string.append('name={!r}'.format(self.name))
+        if True:
+            string.append('required={!r}'.format(self.required))
+        if self.default:
+            string.append('default={!r}'.format(self.default))
+        return '<{} {}>'.format(self.__class__.__name__, ' '.join(string))
+
+    __repr__ = __str__
 
 
 class StringField(Field):
@@ -187,20 +204,7 @@ class ObjectIdField(Field):
 
 
 class ListField(Field):
-    expected_types = (abc.MutableSequence, tuple)
-
-    def __init__(self, min_length: int = None, max_length: int = None, **kw):
-        super().__init__(**kw)
-        self.min_length = min_length
-        self.max_length = max_length
-
-    def validate(self, value: Any) -> None:
-        super().validate(value)
-        if value is not None:
-            if self.max_length is not None:
-                validate_max_length(value, self.max_length)
-            if self.min_length is not None:
-                validate_min_length(value, self.min_length)
+    expected_types = (abc.MutableSequence,)
 
 
 class ArrayField(ListField):
@@ -244,7 +248,7 @@ class ArrayField(ListField):
                 return inner(field)
         return inner(self)
 
-    def _walk_list(self, values: MutableSequence) -> MutableSequence:
+    def _convert_data_in_list_to_model(self, values: MutableSequence) -> MutableSequence:
         def walk(array_field: ArrayField, vals: MutableSequence):
             if not isinstance(vals, abc.MutableSequence):
                 raise ValueError('{!r} must be a list-like object, not a {!r}.'.format(vals, type(vals)))
@@ -262,6 +266,11 @@ class ArrayField(ListField):
                 return [walk(field, value) for value in vals]
 
         return walk(self, values)
+
+    def __str__(self):
+        return '<{} item={!r}>'.format(self.__class__.__name__, str(self.field))
+
+    __repr__ = __str__
 
 
 class DictField(Field):
@@ -284,7 +293,7 @@ class EmbeddedField(DictField):
         self.model = model
         return self
 
-    @property
+    @cachedproperty
     def fields(self) -> Dict[str, Field]:
         # dict preserves insertion order from Python 3.6
         # https://mail.python.org/pipermail/python-dev/2017-December/151283.html
@@ -293,10 +302,11 @@ class EmbeddedField(DictField):
 
     def convert(self, obj: Any) -> Optional[MutableMapping]:
         if isinstance(obj, self.model):
-            # noinspection PyAttributeOutsideInit
-            # we can safely skip `convert` and 'validate` because it must have been done before.
-            self._skip_validate = True
-            return obj.to_dict()
+            # we can safely skip `convert` and 'validate` because it should has been done before.
+            # `dict` cannot be used because setting a new attr on it is valid.
+            dk = obj.to_dict()
+            dk._skip_validate = True
+            return dk
 
         obj = super().convert(obj)
         if obj is None:
@@ -312,6 +322,9 @@ class EmbeddedField(DictField):
             value = field.convert(obj.get(name))
             if value is not None:
                 rv[field.name] = value
+            else:
+                if self.model.retain_none:
+                    rv[field.name] = None
 
         for name, value in obj.items():
             if name not in fields:
@@ -320,7 +333,7 @@ class EmbeddedField(DictField):
         return rv
 
     def validate(self, obj: Optional[MutableMapping]) -> None:
-        if hasattr(self, '_skip_validate'):
+        if hasattr(obj, '_skip_validate'):
             return
 
         super().validate(obj)
@@ -335,7 +348,12 @@ class EmbeddedField(DictField):
             names = [field.name for field in fields.values()]
             for key, value in obj.items():
                 if key not in names:
-                    warn('{!r} not defined in {!r}. Did you misspell it?'.format(key, self.model))
+                    warn('{!r} not defined in model {!r}. Did you misspell it?'.format(key, self.model))
+
+    def __str__(self):
+        return '<{} model={!r}>'.format(self.__class__.__name__, self.model)
+
+    __repr__ = __str__
 
 
 class AnyField(Field):
