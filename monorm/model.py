@@ -137,9 +137,11 @@ class ModelType(type):
 class BaseModel(metaclass=ModelType):
     """Base class of all model classes"""
 
-    # The underlying data of models are saved in a dict-like object.
+    # The underlying data of models are saved in a ordered dict-like object.
     # You can change it to `collections.OrderedDict`, `bson.son.SON` or other compatible types.
-    dict_class: Type[MutableMapping] = dict
+    dict_class: Type[MutableMapping] = OrderedDict
+
+    retain_none: bool = False
 
     # `json.dumps` cannot dump some values of bson object (objectId, datetime, etc.);
     # you can also use your own dump-function.
