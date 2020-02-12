@@ -4,7 +4,7 @@ An Object-Document-Mapper for MongoDB with type hints.
 """
 
 from .model import BaseModel, EmbeddedModel
-from .mongo import Model
+from .mongo import MongoModel as Model
 from .helpers import switch_collection, switch_db
 from .utils import DotSon, get_logger, set_logger
 
@@ -15,4 +15,4 @@ from bson.json_util import loads as json_loads, dumps as json_dumps
 from datetime import datetime
 from typing import List, Any
 
-__version__ = '0.0.6'
+__version__ = '0.0.7'
