@@ -37,6 +37,7 @@ __all__ = [
     'walk_keys',
     'to_camelcase',
     'hump_keys',
+    'get_dict_item_with_dot',
     'classproperty',
     'cachedproperty',
     'isclass',
@@ -319,6 +320,22 @@ def hump_keys(data: MutableMapping) -> MutableMapping:
     """
 
     return walk_keys(to_camelcase, data)
+
+
+def get_dict_item_with_dot(data: MutableMapping, name: str) -> Any:
+    """Get a dict item using dot notation
+
+    >>> get_dict_item_with_dot({'a': {'b': 42}}, 'a')
+    {'b': 42}
+    >>> get_dict_item_with_dot({'a': {'b': 42}}, 'a.b')
+    42
+    """
+    if not name:
+        return data
+    item = data
+    for key in name.split('.'):
+        item = item[key]
+    return item
 
 
 def isclass(obj: Any) -> bool:
