@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from datetime import datetime
-from typing import get_type_hints, Any, MutableMapping, Type, Union, Callable, List, Iterable
+from typing import get_type_hints, Any, MutableMapping, Type, Union, Callable, List, Iterable, Optional, Set
 
 from bson.json_util import dumps
 from bson.objectid import ObjectId
@@ -141,7 +141,7 @@ class BaseModel(metaclass=ModelType):
     # You can change it to `collections.OrderedDict`, `bson.son.SON` or other compatible types.
     dict_class: Type[MutableMapping] = OrderedDict
 
-    retain_none: bool = False
+    retain_none: bool = True
 
     # `json.dumps` cannot dump some values of bson object (objectId, datetime, etc.);
     # you can also use your own dump-function.
@@ -158,6 +158,8 @@ class BaseModel(metaclass=ModelType):
                  bypass_validation: bool = False,
                  **kw):
         self._data = self._clean(kw, bypass_conversion, bypass_validation)
+        self._modified_fields: Optional[Set[str]] = None
+        self._deleted_fields: Optional[Set[str]] = None
 
     # noinspection PyCallByClass
     def to_json(self, *arg, **kw) -> str:
@@ -185,13 +187,64 @@ class BaseModel(metaclass=ModelType):
         obj._data = data
         return obj
 
-    def __hash__(self):
-        return hash(self._data)
+    def _init_marked_fields(self) -> None:
+        dk = self.__dict__
+        if self._modified_fields is None:
+            dk['_modified_fields'] = set()
+        if self._deleted_fields is None:
+            dk['_deleted_fields'] = set()
 
-    def __eq__(self, other):
-        if not isinstance(other, BaseModel):
-            return False
-        return self._data == other._data
+    def _clear_marked_fields(self) -> None:
+        if self._modified_fields:
+            self._modified_fields.clear()
+        if self._modified_fields:
+            self._deleted_fields.clear()
+
+        for value in self.__dict__.values():
+            if isinstance(value, EmbeddedModel):
+                value._clear_marked_fields()
+
+    def _combine_marked_fields(self):
+        modified = []
+        deleted = []
+
+        def combine(instance, prev, attr_name, result):
+            fields = getattr(instance, attr_name)
+            if fields is None:
+                fields = set()
+
+            for name in fields:
+                result.append(prev + name)
+
+            for key, value in instance.__dict__.items():
+                if isinstance(value, EmbeddedModel) and key not in fields:
+                    combine(value, prev + key + '.', attr_name, result)
+
+        combine(self, '', '_modified_fields', modified)
+        combine(self, '', '_deleted_fields', deleted)
+        return modified, deleted
+
+    def __setattr__(self, name, value):
+        fields = type(self).__dict__['_field_order']
+
+        if name in fields:
+            self._init_marked_fields()
+            if not self.retain_none and value is None:
+                self._deleted_fields.add(name)
+                self._modified_fields.discard(name)
+            else:
+                self._modified_fields.add(name)
+                self._deleted_fields.discard(name)
+        return super().__setattr__(name, value)
+
+    def __delattr__(self, name):
+        fields = type(self).__dict__['_field_order']
+
+        if name in fields:
+            self._init_marked_fields()
+            self._deleted_fields.add(name)
+            self._modified_fields.discard(name)
+        return super().__delattr__(name)
 
     def __iter__(self) -> Iterable[str]:
         return iter(self._data)
