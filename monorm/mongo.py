@@ -10,7 +10,8 @@ from pymongo.results import InsertOneResult, InsertManyResult, UpdateResult, Del
 
 from .fields import *
 from .model import BaseModel, ModelType
-from .utils import pluralize, info, normalize_indexes, default_index_name, have_same_shape, not_none, warn
+from .utils import pluralize, info, normalize_indexes, default_index_name, have_same_shape,\
+    not_none, warn, get_dict_item_with_dot
 
 __all__ = [
     'MongoModel',
@@ -216,7 +217,7 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
         """An alias for the primary key (`_id` in MongoDB)."""
         return self._data.get('_id', None)
 
-    def save(self, **kw):
+    def save(self, full_update: bool = False, **kw):
         """Save the document into MongoDB.
 
         If there is no value for the primary key on this Model instance, the
@@ -231,13 +232,26 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
 
         if state == 'before_save':
             collection.insert_one(self.to_dict(), **kw)
+            self._clear_marked_fields()
             self._state = 'after_save'
-        elif state == 'after_save':
-            collection.replace_one({'_id': self.pk}, self.to_dict(), **kw)
-        elif state == 'from_document':
+        elif state in ('after_save', 'from_document'):
+            doc = self.to_dict()
             if self.pk is None:
                 raise RuntimeError("The document without an '_id' cannot be saved.")
-            collection.replace_one({'_id': self.pk}, self.to_dict(), **kw)
+
+            if full_update:
+                collection.update_one({'_id': self.pk}, {'$set': doc}, **kw)
+            else:
+                modified, deleted = self._combine_marked_fields()
+                update = {}
+                if modified:
+                    update['$set'] = {field: get_dict_item_with_dot(doc, field) for field in modified}
+                if deleted:
+                    update['$unset'] = {field: '' for field in deleted}
+                collection.update_one({'_id': self.pk}, update, **kw)
+            self._clear_marked_fields()
+        elif state == 'deleted':
+            raise RuntimeError('The document has been deleted.')
 
         return self
 
@@ -253,6 +267,8 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
             raise RuntimeError("The document without an '_id' cannot be deleted.")
 
         collection.delete_one({'_id': self.pk}, **kw)
+        self._state = 'deleted'
+        self._clear_marked_fields()
 
     @classmethod
     def from_document(cls, doc: MutableMapping):
