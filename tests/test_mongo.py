@@ -79,6 +79,13 @@ class TestSave:
         with pytest.raises(RuntimeError):
             post.save()
 
+    def test_cannot_save_after_delete(self, db_populated):
+        Post.set_db(db_populated)
+        post = Post.find_one({})
+        post.delete()
+        with pytest.raises(RuntimeError):
+            post.save()
+
 
 class TestDelete:
     def test_delete(self, db):
