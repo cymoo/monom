@@ -318,7 +318,7 @@ __Index declaration cannot appear in embedded model.__
 
 * `dict_class`
 
-The underlying data of model instance are saved in a ordered dict. You may change it to `bson.son.SON` or other compatible types.
+The underlying data of model instance are saved in an ordered dict. You may change it to `bson.son.SON` or other compatible types.
 Default value is `collections.OrderedDict`.
 
 * `retain_none`
