@@ -57,7 +57,7 @@ class Post(Model):
     def find_posts_by_lucy(cls):
         return Post.find({'user.name': 'Lucy'}).sort('created_on')
 
-db = MongoClient().get_database('posts')
+db = MongoClient().get_database('demo')
 Post.set_db(db)
 post = Post(
     user={'name': 'Lucy', 'email': 'foo@example.com'},
@@ -87,7 +87,7 @@ from monorm import Model, MongoClient
 class MyModel(Model):
     pass
 
-db = MongoClient().get_database('posts')
+db = MongoClient().get_database('demo')
 MyModel.set_db(db)
 ```
 
@@ -131,13 +131,48 @@ If the value is a `callable`, it will be called on each saving or inserting.
 
 #### Methods
 
-* `save()`
+* `save(full_update=False, *kw)`
 
 Save the data into MongoDB.
-If there is no value for the primary key on this model instance, the instance will be inserted into MongoDB.
-Otherwise, the entire data will be __replaced__ with this version.
 
-* `delete()`
+1. The new document will be inserted into MongoDB.
+
+2. The existing document will be updated atomically using operator '$set' and '$unset'.
+
+3. `list` mutation cannot be tracked; but you can pass an keyword argument `full_update=True` to perform a full update.
+
+```python
+from monorm import *
+
+class User(Model):
+    name: str
+    email: str
+    hobbits: List[str]
+    active: bool = True
+    created_on: datetime = datetime.utcnow
+
+# connect to mongodb
+User.set_db(MongoClient().get_database('demo'))
+
+# insert a doc
+User(name='Lucy', email='lucy@foo.com', hobbits=['music', 'sport']).save()
+
+# find a doc filtering out some fields
+user = User.find_one({}, {'created_on': False})
+
+user.name = 'foobar'
+del user.email
+
+# saved with an atomic update
+user.save()
+
+user.hobbits.append('programming')
+# to save a doc with changed list items, you should set `full_update=True`
+user.save(full_update=True)
+
+```
+
+* `delete(**kw)`
 
 Delete the data from MongoDB.
 
@@ -145,11 +180,11 @@ Delete the data from MongoDB.
 
 An alias for the primary key (`_id` in MongoDB).
 
-* `to_dict()`
+* `to_dict(**kw)`
 
 Return an ordered dict containing the instance's data with the same order as the field definition order.
 
-* `to_json()`
+* `to_json(**kw)`
 
 Return a json string. Some specific types (`ObjectId`, `datetime`, etc.) will be handled correctly.
 
@@ -179,6 +214,8 @@ It proxies a subset of methods in `pymongo.collection:Collection`, which will pe
 
 * `find_one`, `find`, `find_one_and_delete`, `find_one_and_replace`, `find_one_and_update` will convert query results to the corresponding model object.
 
+__Monorm does not proxy `update` for it's a deprecated method in pymongo.__
+
 __`find` returns a `Cursor` of model instances instead of dicts. Before dump your documents to json, remember to do a small conversion.__
 
 ```python
@@ -188,7 +225,7 @@ class BinData(Model):
     name: str
     data: bytes
 
-BinData.set_db(MongoClient().get_database('posts'))
+BinData.set_db(MongoClient().get_database('demo'))
 BinData(name='foo', data=b'abc').save()
 BinData(name='bar', data=b'xyz').save()
 
