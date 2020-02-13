@@ -105,32 +105,52 @@ class Field:
         if instance is None:
             return self
 
+        dk = instance.__dict__
         try:
-            value = instance.__dict__['_data'][self.name]
+            value = dk['_data'][self.name]
         except KeyError:
             raise AttributeError('Field {!r} has no value; '
                                  'did you filter it out using projection query?'.format(self.name)) from None
+        if value is None:
+            return None
+
+        if not isinstance(self, (EmbeddedField, ArrayField)):
+            return value
+
+        if self.name in dk:
+            return dk[self.name]
 
         if isinstance(self, EmbeddedField):
-            return self.model.from_data(value)
-        elif isinstance(self, ArrayField):
-            return self._convert_data_in_list_to_model(value)
+            rv = self.model.from_data(value)
         else:
-            return value
+            rv = self._convert_data_in_list_to_model(value)
+
+        dk[self.name] = rv
+
+        return rv
 
     def __set__(self, instance, value):
         value = self.convert(value)
         self.validate(value)
 
-        dk = instance.__dict__['_data']
+        dk = instance.__dict__
         if value is not None:
-            dk[self.name] = value
+            dk['_data'][self.name] = value
+            if isinstance(self, EmbeddedField):
+                dk[self.name] = self.model.from_data(value)
+            if isinstance(self, ArrayField):
+                dk[self.name] = self._convert_data_in_list_to_model(value)
         else:
             if type(instance).retain_none:
-                dk[self.name] = None
+                dk['_data'][self.name] = None
+            else:
+                dk['_data'].pop(self.name, None)
+            dk.pop(self.name, None)
 
     def __delete__(self, instance):
-        instance.__dict__['_data'].pop(self.name, None)
+        dk = instance.__dict__
+        dk['_data'].pop(self.name, None)
+        dk.pop(self.name, None)
 
     def __str__(self):
         string = []
