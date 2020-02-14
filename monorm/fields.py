@@ -31,6 +31,14 @@ class ValidationError(Exception):
         super().__init__(msg)
 
 
+class _Missing:
+    pass
+
+
+# a sentinel which indicates a value is missing
+_missing = _Missing()
+
+
 def validate_type(value: Any, expected_types: tuple) -> None:
     if not isinstance(value, expected_types):
         if len(expected_types) == 1:
@@ -72,7 +80,7 @@ class Field:
         self,
         name: str = None,
         required: bool = False,
-        default: Any = None,
+        default: Any = _missing,
         converter: Callable = None,
         validator: Callable[[Any], bool] = None,
     ):
@@ -83,22 +91,22 @@ class Field:
         self.validator = validator
 
     def convert(self, value: Any) -> Any:
-        if value is None:
-            if callable(self.default):
-                value = self.default()
-            else:
-                value = self.default
-        if value is not None and self.converter is not None:
+        default = self.default
+
+        if value is _missing and default is not _missing:
+            value = default() if callable(default) else default
+
+        if value is not _missing and self.converter is not None:
             value = self.converter(value)
         return value
 
     def validate(self, value: Any) -> None:
-        if value is None:
-            if self.required:
-                raise ValidationError('Field {!r} is missing.'.format(self.name))
-        else:
+        if value is _missing and self.required:
+            raise ValidationError('Field {!r} is missing.'.format(self.name))
+
+        if value is not _missing:
             validate_type(value, self.expected_types)
-            if self.validator:
+            if self.validator is not None:
                 validate_fn(value, self.validator)
 
     def __get__(self, instance, cls) -> Any:
@@ -113,8 +121,6 @@ class Field:
         except KeyError:
             raise AttributeError('Field {!r} has no value; '
                                  'did you filter it out using projection query?'.format(name)) from None
-        if value is None:
-            return None
 
         if not isinstance(self, (EmbeddedField, ArrayField)):
             return value
@@ -135,18 +141,11 @@ class Field:
         dk = instance.__dict__
         name = self.name
 
-        if value is not None:
-            dk['_data'][name] = value
-            if isinstance(self, EmbeddedField):
-                dk[name] = self.model.from_data(value)
-            if isinstance(self, ArrayField):
-                dk[name] = self._convert_data_in_list_to_model(value)
-        else:
-            if type(instance).retain_none:
-                dk['_data'][name] = None
-            else:
-                dk['_data'].pop(name, None)
-            dk.pop(name, None)
+        dk['_data'][name] = value
+        if isinstance(self, EmbeddedField):
+            dk[name] = self.model.from_data(value)
+        if isinstance(self, ArrayField):
+            dk[name] = self._convert_data_in_list_to_model(value)
 
     def __delete__(self, instance):
         dk = instance.__dict__
@@ -176,7 +175,7 @@ class StringField(Field):
 
     def validate(self, value: Any) -> None:
         super().validate(value)
-        if value is not None:
+        if value is not _missing:
             if self.max_length is not None:
                 validate_max_length(value, self.max_length)
             if self.min_length is not None:
@@ -193,7 +192,7 @@ class NumberField(Field):
 
     def validate(self, value: Any) -> None:
         super().validate(value)
-        if value is not None:
+        if value is not _missing:
             if self.max_value is not None:
                 validate_max_value(value, self.max_value)
             if self.min_value is not None:
@@ -242,19 +241,19 @@ class ArrayField(ListField):
                             'subclass of `EmbeddedModel`; not a {!r}.'
                             .format(Field, EmbeddedModel, field))
 
-    def convert(self, values: Any) -> Optional[MutableSequence]:
+    def convert(self, values: Any) -> Union[MutableSequence, _Missing]:
         values = super().convert(values)
-        if values is None:
-            return
+        if values is _missing:
+            return _missing
 
         if not isinstance(values, (abc.MutableSequence, tuple)):
             raise ValueError('{!r} must be a list-like object, not a {!r}.'.format(values, type(values)))
 
         return [self.field.convert(value) for value in values]
 
-    def validate(self, values: Optional[MutableSequence]) -> None:
+    def validate(self, values: Union[MutableSequence, _Missing]) -> None:
         super().validate(values)
-        if values is None:
+        if values is _missing:
             return
 
         for value in values:
@@ -321,17 +320,17 @@ class EmbeddedField(DictField):
         field_names = self.model.__dict__['_field_order']
         return {name: getattr(self.model, name) for name in field_names}
 
-    def convert(self, obj: Any) -> Optional[MutableMapping]:
+    def convert(self, obj: Any) -> Union[MutableMapping, _Missing]:
         if isinstance(obj, self.model):
-            # we can safely skip `convert` and 'validate` because it should has been done before.
-            # `dict` cannot be used because setting a new attr on it is valid.
+            # we can safely skip `~convert` and '~validate` because it should has been done before.
+            # :class:`dict` cannot be used because setting an attr on it is supported.
             dk = obj.to_dict()
             dk._skip_validate = True
             return dk
 
         obj = super().convert(obj)
-        if obj is None:
-            return
+        if obj is _missing:
+            return _missing
 
         if not isinstance(obj, MutableMapping):
             raise ValueError('{!r} must be a dict-like object, not a {!r}.'.format(obj, type(obj)))
@@ -340,12 +339,9 @@ class EmbeddedField(DictField):
         rv = self.model.dict_class()
 
         for name, field in fields.items():
-            value = field.convert(obj.get(name))
-            if value is not None:
+            value = field.convert(obj.get(name, _missing))
+            if value is not _missing:
                 rv[field.name] = value
-            else:
-                if self.model.retain_none:
-                    rv[field.name] = None
 
         for name, value in obj.items():
             if name not in fields:
@@ -353,23 +349,24 @@ class EmbeddedField(DictField):
 
         return rv
 
-    def validate(self, obj: Optional[MutableMapping]) -> None:
+    def validate(self, obj: Union[MutableMapping, _Missing]) -> None:
         if hasattr(obj, '_skip_validate'):
             return
 
         super().validate(obj)
-        if obj is None:
+        if obj is _missing:
             return
 
         fields = self.fields
-        for name, field in fields.items():
-            field.validate(obj.get(name))
+
+        for field in fields.values():
+            field.validate(obj.get(field.name, _missing))
 
         if self.model.warn_extra_data:
-            names = [field.name for field in fields.values()]
-            for key, value in obj.items():
-                if key not in names:
-                    warn('{!r} not defined in model {!r}. Did you misspell it?'.format(key, self.model))
+            names = {field.name for field in fields.values()}
+            for name, value in obj.items():
+                if name not in names:
+                    warn('{!r} not defined in model {!r}. Did you misspell it?'.format(name, self.model))
 
     def __str__(self):
         return '<{} model={!r}>'.format(self.__class__.__name__, self.model)

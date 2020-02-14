@@ -700,30 +700,6 @@ class TestModelDictClass:
         assert type(obj.e[0].to_dict()) == SON
 
 
-def test_model_retain_none():
-    class MainModel(BaseModel):
-        f1: str
-        f2: int
-
-    MainModel.retain_none = True
-    obj = MainModel(f1=None, f2=13)
-    assert 'f1' in obj.to_dict()
-    obj.f1 = None
-    assert 'f1' in obj.to_dict()
-
-
-def test_model_ignore_none():
-    class MainModel(BaseModel):
-        f1: str
-        f2: int
-
-    MainModel.retain_none = False
-    obj = MainModel(f1=None, f2=13)
-    assert 'f1' not in obj.to_dict()
-    obj.f1 = None
-    assert 'f1' not in obj.to_dict()
-
-
 def test_model_extra_data_warning(caplog):
     class SubModel(EmbeddedModel):
         f: int
