@@ -214,8 +214,6 @@ It proxies a subset of methods in `pymongo.collection:Collection`, which will pe
 
 * `find_one`, `find`, `find_one_and_delete`, `find_one_and_replace`, `find_one_and_update` will convert query results to the corresponding model object.
 
-__Monorm does not proxy `update` for it's a deprecated method in pymongo.__
-
 __`find` returns a `Cursor` of model instances instead of dicts. Before dump your documents to json, remember to do a small conversion.__
 
 ```python
@@ -320,11 +318,6 @@ __Index declaration cannot appear in embedded model.__
 
 The underlying data of model instance are saved in an ordered dict. You may change it to `bson.son.SON` or other compatible types.
 Default value is `collections.OrderedDict`.
-
-* `retain_none`
-
-Whether saves a `None` for the fields if they are absent in the document.
-Default value is `True`.
 
 * `warn_extra_data`
 
