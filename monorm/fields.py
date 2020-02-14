@@ -106,46 +106,47 @@ class Field:
             return self
 
         dk = instance.__dict__
+        name = self.name
+
         try:
-            value = dk['_data'][self.name]
+            value = dk['_data'][name]
         except KeyError:
             raise AttributeError('Field {!r} has no value; '
-                                 'did you filter it out using projection query?'.format(self.name)) from None
+                                 'did you filter it out using projection query?'.format(name)) from None
         if value is None:
             return None
 
         if not isinstance(self, (EmbeddedField, ArrayField)):
             return value
 
-        if self.name in dk:
-            return dk[self.name]
+        if name not in dk:
+            if isinstance(self, EmbeddedField):
+                rv = self.model.from_data(value)
+            else:
+                rv = self._convert_data_in_list_to_model(value)
+            dk[name] = rv
 
-        if isinstance(self, EmbeddedField):
-            rv = self.model.from_data(value)
-        else:
-            rv = self._convert_data_in_list_to_model(value)
-
-        dk[self.name] = rv
-
-        return rv
+        return dk[name]
 
     def __set__(self, instance, value):
         value = self.convert(value)
         self.validate(value)
 
         dk = instance.__dict__
+        name = self.name
+
         if value is not None:
-            dk['_data'][self.name] = value
+            dk['_data'][name] = value
             if isinstance(self, EmbeddedField):
-                dk[self.name] = self.model.from_data(value)
+                dk[name] = self.model.from_data(value)
             if isinstance(self, ArrayField):
-                dk[self.name] = self._convert_data_in_list_to_model(value)
+                dk[name] = self._convert_data_in_list_to_model(value)
         else:
             if type(instance).retain_none:
-                dk['_data'][self.name] = None
+                dk['_data'][name] = None
             else:
-                dk['_data'].pop(self.name, None)
-            dk.pop(self.name, None)
+                dk['_data'].pop(name, None)
+            dk.pop(name, None)
 
     def __delete__(self, instance):
         dk = instance.__dict__
