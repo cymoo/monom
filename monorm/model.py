@@ -102,6 +102,9 @@ class ModelType(type):
         if isinstance(aliases, dict):
             aliases = [(key, value) for key, value in aliases.items()]
 
+        if len(aliases) != len({alias[1] for alias in aliases}):
+            raise ValueError('Duplicated alias found in {!r}.'.format(cls))
+
         for field_name, alias in aliases:
             ensure_field_exist(field_name)
             fields[field_name].name = alias
@@ -140,8 +143,6 @@ class BaseModel(metaclass=ModelType):
     # The underlying data of models are saved in a ordered dict-like object.
     # You can change it to `collections.OrderedDict`, `bson.son.SON` or other compatible types.
     dict_class: Type[MutableMapping] = OrderedDict
-
-    retain_none: bool = True
 
     # `json.dumps` cannot dump some values of bson object (objectId, datetime, etc.);
     # you can also use your own dump-function.
@@ -187,7 +188,7 @@ class BaseModel(metaclass=ModelType):
         obj._data = data
         return obj
 
-    def _init_marked_fields(self) -> None:
+    def _init_tracked_fields(self) -> None:
         dk = self.__dict__
         if self._modified_fields is None:
             dk['_modified_fields'] = set()
@@ -204,7 +205,7 @@ class BaseModel(metaclass=ModelType):
             if isinstance(value, EmbeddedModel):
                 value._clear_marked_fields()
 
-    def _combine_marked_fields(self):
+    def _combine_tracked_fields(self):
         modified = []
         deleted = []
 
@@ -228,20 +229,16 @@ class BaseModel(metaclass=ModelType):
         fields = type(self).__dict__['_field_order']
 
         if name in fields:
-            self._init_marked_fields()
-            if not self.retain_none and value is None:
-                self._deleted_fields.add(name)
-                self._modified_fields.discard(name)
-            else:
-                self._modified_fields.add(name)
-                self._deleted_fields.discard(name)
+            self._init_tracked_fields()
+            self._modified_fields.add(name)
+            self._deleted_fields.discard(name)
         return super().__setattr__(name, value)
 
     def __delattr__(self, name):
         fields = type(self).__dict__['_field_order']
 
         if name in fields:
-            self._init_marked_fields()
+            self._init_tracked_fields()
             self._deleted_fields.add(name)
             self._modified_fields.discard(name)
         return super().__delattr__(name)

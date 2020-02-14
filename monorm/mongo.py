@@ -242,7 +242,7 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
             if full_update:
                 collection.update_one({'_id': self.pk}, {'$set': doc}, **kw)
             else:
-                modified, deleted = self._combine_marked_fields()
+                modified, deleted = self._combine_tracked_fields()
                 update = {}
                 if modified:
                     update['$set'] = {field: get_dict_item_with_dot(doc, field) for field in modified}
