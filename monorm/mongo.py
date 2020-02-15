@@ -219,10 +219,10 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
 
     def save(self, full_update: bool = False, **kw):
         """Save the document into MongoDB.
-
-        If there is no value for the primary key on this Model instance, the
-        instance will be inserted into MongoDB. Otherwise, the entire document
-        will be replaced with this version.
+        1. The new document will be inserted into MongoDB.
+        2. The existing document will be updated atomically using operator '$set' and '$unset'.
+        3. `list` mutation cannot be tracked; but you can pass an keyword argument `full_update=True`
+            to perform a full update.
 
         :return This object with the `pk` property filled if it wasn't already.
         """
@@ -232,7 +232,7 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
 
         if state == 'before_save':
             collection.insert_one(self.to_dict(), **kw)
-            self._clear_marked_fields()
+            self._clear_tracked_fields()
             self._state = 'after_save'
         elif state in ('after_save', 'from_document'):
             doc = self.to_dict()
@@ -249,7 +249,7 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
                 if deleted:
                     update['$unset'] = {field: '' for field in deleted}
                 collection.update_one({'_id': self.pk}, update, **kw)
-            self._clear_marked_fields()
+            self._clear_tracked_fields()
         elif state == 'deleted':
             raise RuntimeError('The document has been deleted.')
 
@@ -268,7 +268,7 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
 
         collection.delete_one({'_id': self.pk}, **kw)
         self._state = 'deleted'
-        self._clear_marked_fields()
+        self._clear_tracked_fields()
 
     @classmethod
     def from_document(cls, doc: MutableMapping):
@@ -309,6 +309,7 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
 
     @classmethod
     def _clean_update(cls, update: MutableMapping, bypass_validation: bool = False) -> MutableMapping:
+        # From MongoDB 4.2, argument `update` can be an aggregation pipeline.
         if not isinstance(update, MutableMapping):
             return update
 

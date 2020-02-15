@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from datetime import datetime
-from typing import get_type_hints, Any, MutableMapping, Type, Union, Callable, List, Iterable, Optional, Set
+from typing import get_type_hints, Any, MutableMapping, Type, Union, Callable, List, Iterable, Optional, Set, Tuple
 
 from bson.json_util import dumps
 from bson.objectid import ObjectId
@@ -164,10 +164,19 @@ class BaseModel(metaclass=ModelType):
 
     # noinspection PyCallByClass
     def to_json(self, *arg, **kw) -> str:
+        """Return a json string. Some specific types (`ObjectId`, `datetime`, etc.) will be handled correctly."""
         return type(self).json_dumps_func(self.to_dict(), *arg, **kw)
 
     def to_dict(self) -> MutableMapping:
+        """Return an ordered dict containing the instance's data with the same order as the field definition order."""
         return self._data
+
+    @classmethod
+    def from_data(cls, data: MutableMapping):
+        """Construct an instance of this class from the given data; bypass conversion and validation"""
+        obj = cls(bypass_conversion=True, bypass_validation=True)
+        obj._data = data
+        return obj
 
     @classmethod
     def _clean(cls,
@@ -181,21 +190,13 @@ class BaseModel(metaclass=ModelType):
             root.validate(data)
         return data
 
-    @classmethod
-    def from_data(cls, data: MutableMapping):
-        """Construct an instance of this class from the given data; bypass conversion and validation"""
-        obj = cls(bypass_conversion=True, bypass_validation=True)
-        obj._data = data
-        return obj
-
     def _init_tracked_fields(self) -> None:
-        dk = self.__dict__
         if self._modified_fields is None:
-            dk['_modified_fields'] = set()
+            self._modified_fields = set()
         if self._deleted_fields is None:
-            dk['_deleted_fields'] = set()
+            self._deleted_fields = set()
 
-    def _clear_marked_fields(self) -> None:
+    def _clear_tracked_fields(self) -> None:
         if self._modified_fields:
             self._modified_fields.clear()
         if self._modified_fields:
@@ -203,11 +204,11 @@ class BaseModel(metaclass=ModelType):
 
         for value in self.__dict__.values():
             if isinstance(value, EmbeddedModel):
-                value._clear_marked_fields()
+                value._clear_tracked_fields()
 
-    def _combine_tracked_fields(self):
-        modified = []
-        deleted = []
+    def _combine_tracked_fields(self) -> Tuple[Set[str], Set[str]]:
+        modified = set()
+        deleted = set()
 
         def combine(instance, prev, attr_name, result):
             fields = getattr(instance, attr_name)
@@ -215,7 +216,7 @@ class BaseModel(metaclass=ModelType):
                 fields = set()
 
             for name in fields:
-                result.append(prev + name)
+                result.add(prev + name)
 
             for key, value in instance.__dict__.items():
                 if isinstance(value, EmbeddedModel) and key not in fields:

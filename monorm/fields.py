@@ -31,12 +31,7 @@ class ValidationError(Exception):
         super().__init__(msg)
 
 
-class _Missing:
-    pass
-
-
-# a sentinel which indicates a value is missing
-_missing = _Missing()
+_missing = Missing()
 
 
 def validate_type(value: Any, expected_types: tuple) -> None:
@@ -224,7 +219,7 @@ class ObjectIdField(Field):
 
 
 class ListField(Field):
-    expected_types = (abc.MutableSequence,)
+    expected_types = (abc.MutableSequence, tuple)
 
 
 class ArrayField(ListField):
@@ -241,7 +236,7 @@ class ArrayField(ListField):
                             'subclass of `EmbeddedModel`; not a {!r}.'
                             .format(Field, EmbeddedModel, field))
 
-    def convert(self, values: Any) -> Union[MutableSequence, _Missing]:
+    def convert(self, values: Any) -> Union[MutableSequence, Missing]:
         values = super().convert(values)
         if values is _missing:
             return _missing
@@ -251,7 +246,7 @@ class ArrayField(ListField):
 
         return [self.field.convert(value) for value in values]
 
-    def validate(self, values: Union[MutableSequence, _Missing]) -> None:
+    def validate(self, values: Union[MutableSequence, Missing]) -> None:
         super().validate(values)
         if values is _missing:
             return
@@ -320,10 +315,10 @@ class EmbeddedField(DictField):
         field_names = self.model.__dict__['_field_order']
         return {name: getattr(self.model, name) for name in field_names}
 
-    def convert(self, obj: Any) -> Union[MutableMapping, _Missing]:
+    def convert(self, obj: Any) -> Union[MutableMapping, Missing]:
         if isinstance(obj, self.model):
-            # we can safely skip `~convert` and '~validate` because it should has been done before.
-            # :class:`dict` cannot be used because setting an attr on it is supported.
+            # we can safely skip `convert` and 'validate` because it must have been done before.
+            # `dict` cannot be used because setting an attr on it is invalid.
             dk = obj.to_dict()
             dk._skip_validate = True
             return dk
@@ -349,7 +344,7 @@ class EmbeddedField(DictField):
 
         return rv
 
-    def validate(self, obj: Union[MutableMapping, _Missing]) -> None:
+    def validate(self, obj: Union[MutableMapping, Missing]) -> None:
         if hasattr(obj, '_skip_validate'):
             return
 
