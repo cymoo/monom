@@ -79,7 +79,7 @@ assert post.user.name == 'Lucy'
 
 ### Connection
 
-No extra verbose connection methods. Just pass pymongo's `Database` instance to your model.
+No extra connection methods. Just pass pymongo's `Database` instance to your model.
 
 ```python
 from monorm import Model, MongoClient
@@ -180,7 +180,7 @@ Delete the data from MongoDB.
 
 An alias for the primary key (`_id` in MongoDB).
 
-* `to_dict(**kw)`
+* `to_dict()`
 
 Return an ordered dict containing the instance's data with the same order as the field definition order.
 
@@ -210,9 +210,9 @@ Monorm adds no extra methods to operate MongoDB.
 
 It proxies a subset of methods in `pymongo.collection:Collection`, which will perform data cleaning and convert the data from query operations to the model object.
 
-* `insert_one`, `insert_many`, `replace_one`, `update_one`, `update_many`, `find_one_and_update`, `find_one_and_replace` will perform data cleaning.
+* `insert_one`, `insert_many`, `replace_one`, `update_one`, `update_many`, `find_one_and_update`, `find_one_and_replace` will perform data conversion and validation.
 
-* `find_one`, `find`, `find_one_and_delete`, `find_one_and_replace`, `find_one_and_update` will convert query results to the corresponding model object.
+* `find_one`, `find`, `find_one_and_delete`, `find_one_and_replace`, `find_one_and_update` will convert query results to the corresponding model instance.
 
 __`find` returns a `Cursor` of model instances instead of dicts. Before dump your documents to json, remember to do a small conversion.__
 
