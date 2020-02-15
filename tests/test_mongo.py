@@ -46,7 +46,21 @@ def db_populated(db):
 
 
 class TestSave:
-    def test_save(self, db):
+    def test_save_state(self, db):
+        Post.set_db(db)
+        post = Post(title='hello')
+        assert post._state == 'before_save'
+
+        post.save()
+        assert post._state == 'after_save'
+
+        post = Post.find_one()
+        assert post._state == 'from_document'
+
+        post.delete()
+        assert post._state == 'deleted'
+
+    def test_save_before_save(self, db):
         Post.set_db(db)
         post = Post(
             user={'first_name': 'Foo', 'last_name': 'Bar'},
@@ -59,7 +73,7 @@ class TestSave:
         pk = post.pk
         assert isinstance(pk, ObjectId)
 
-    def test_save_after_modify(self, db):
+    def test_atomic_save(self, db):
         Post.set_db(db)
         post = Post(
             user={'first_name': 'Foo', 'last_name': 'Bar'},
@@ -68,12 +82,38 @@ class TestSave:
             tags=['life', 'art']
         )
         post.save()
-        pk = post.pk
         post.title = 'hello earth'
+        del post.content
+        post.user.last_name = 'Box'
         post.save()
-        assert post.pk == pk
 
-    def test_cannot_save_query_result_without_an_id(self, db_populated):
+        post = Post.find_one({'title': 'hello earth'})
+        assert post.title == 'hello earth'
+        assert post.user.last_name == 'Box'
+        with pytest.raises(AttributeError):
+            _ = post.content
+
+    def test_save_full_update(self, db):
+        Post.set_db(db)
+        post = Post(tags=['life', 'art']).save()
+        post.tags.append('music')
+        post.save(full_update=True)
+
+        post = Post.find_one()
+        assert 'music' in post.tags
+
+    def test_save_no_need_full_update(self, db):
+        Post.set_db(db)
+        post = Post(tags=['life', 'art']).save()
+        tags = post.tags
+        tags.append('music')
+        post.tags = tags
+        post.save()
+
+        post = Post.find_one()
+        assert 'music' in post.tags
+
+    def test_cannot_save_without_an_id(self, db_populated):
         Post.set_db(db_populated)
         post = Post.find_one({}, {'_id': False})
         with pytest.raises(RuntimeError):
@@ -519,7 +559,7 @@ class TestUpdate:
         rv = Post.update_one({'user.first_name': 'foo42'}, {'$set': {'title': 'hello world'}})
         assert isinstance(rv, UpdateResult)
 
-    # TODO: verbose and incomplete
+    # TODO: Ahh, writing test cases is too boring...
     def test_update_one_with_cleaning(self, db_populated):
         Post.set_db(db_populated)
 
