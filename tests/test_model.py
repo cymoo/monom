@@ -656,6 +656,80 @@ def test_model_from_data_directly():
         _ = obj.f2
 
 
+class TestTrackFieldModify:
+    def test_field_set(self):
+        class SubModel(EmbeddedModel):
+            f1: str
+
+        class MainModel(BaseModel):
+            f1: str
+            f2: SubModel
+
+        obj = MainModel(f1='foo', f2={'f1': 'bar'})
+        obj.f1 = 'foo1'
+        assert obj._combine_tracked_fields()[0] == {'f1'}
+
+        obj.f2.f1 = 'bar1'
+        assert obj._combine_tracked_fields()[0] == {'f1', 'f2.f1'}
+
+        obj.f2 = {'f1': 'bar2'}
+        assert obj._combine_tracked_fields()[0] == {'f1', 'f2'}
+
+    def test_field_del(self):
+        class SubModel(EmbeddedModel):
+            f1: str
+
+        class MainModel(BaseModel):
+            f1: str
+            f2: SubModel
+
+        obj = MainModel(f1='foo', f2={'f1': 'bar'})
+        del obj.f1
+        assert obj._combine_tracked_fields()[1] == {'f1'}
+
+        del obj.f2.f1
+        assert obj._combine_tracked_fields()[1] == {'f1', 'f2.f1'}
+
+        del obj.f2
+        assert obj._combine_tracked_fields()[1] == {'f1', 'f2'}
+
+    def test_field_set_del(self):
+        class SubModel(EmbeddedModel):
+            f1: str
+
+        class MainModel(BaseModel):
+            f1: str
+            f2: SubModel
+
+        obj = MainModel(f1='foo', f2={'f1': 'bar'})
+        del obj.f1
+        obj.f1 = 'foo1'
+        assert obj._combine_tracked_fields()[0] == {'f1'}
+        assert obj._combine_tracked_fields()[1] == set()
+
+        obj = MainModel(f1='foo', f2={'f1': 'bar'})
+        obj.f2.f1 = 'bar1'
+        del obj.f2
+        assert obj._combine_tracked_fields()[0] == set()
+        assert obj._combine_tracked_fields()[1] == {'f2'}
+
+    def test_field_clear_tracked_fields(self):
+        class SubModel(EmbeddedModel):
+            f1: str
+
+        class MainModel(BaseModel):
+            f1: str
+            f2: SubModel
+
+        obj = MainModel(f1='foo', f2={'f1': 'bar'})
+        obj.f1 = 'foo1'
+        obj.f2.f1 = 'bar1'
+        obj._clear_tracked_fields()
+
+        assert obj._combine_tracked_fields()[0] == set()
+        assert obj._combine_tracked_fields()[1] == set()
+
+
 class TestModelDictClass:
     def test_dict_type(self):
         class SubModel(EmbeddedModel):
