@@ -38,6 +38,7 @@ __all__ = [
     'to_camelcase',
     'hump_keys',
     'get_dict_item_with_dot',
+    'Missing',
     'classproperty',
     'cachedproperty',
     'isclass',
@@ -365,6 +366,26 @@ def not_none(value: Any) -> bool:
     if not isinstance(value, abc.Sequence):
         value = [value]
     return all([item is not None for item in value])
+
+
+class Missing:
+    """A Singleton which indicates a value does not exist. NEVER try to subclass it.
+
+    >>> Missing() == Missing()
+    True
+    """
+
+    _instance = None
+
+    def __new__(cls, *args, **kw):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls, *args, **kw)
+        return cls._instance
+
+    def __str__(self):
+        return '<Missing>'
+
+    __repr__ = __str__
 
 
 # noinspection PyPep8Naming
