@@ -188,6 +188,10 @@ Return an ordered dict containing the instance's data with the same order as the
 
 Return a json string. Some specific types (`ObjectId`, `datetime`, etc.) will be handled correctly.
 
+* `get(name, default=None)`
+
+Return the value for name if it has a value, else default.
+
 #### Class Methods
 
 * `set_db(db)`

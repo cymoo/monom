@@ -171,6 +171,12 @@ class BaseModel(metaclass=ModelType):
         """Return an ordered dict containing the instance's data with the same order as the field definition order."""
         return self._data
 
+    def get(self, name: str, default=None) -> Any:
+        try:
+            return getattr(self, name)
+        except AttributeError:
+            return default
+
     @classmethod
     def from_data(cls, data: MutableMapping):
         """Construct an instance of this class from the given data; bypass conversion and validation"""
