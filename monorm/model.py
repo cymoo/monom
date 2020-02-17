@@ -172,6 +172,7 @@ class BaseModel(metaclass=ModelType):
         return self._data
 
     def get(self, name: str, default=None) -> Any:
+        """Return the value for name if it has a value, else default."""
         try:
             return getattr(self, name)
         except AttributeError:
