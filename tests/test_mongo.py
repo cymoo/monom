@@ -190,8 +190,8 @@ class TestIndexes:
                     {'key': 'a', 'name': 'foobar'},
                     {'key': ('b', -1), 'sparse': True},
                     {'key':  ['c', 'd'], 'unique': True},
-                    {'key':  ['e', ('f', -1)], 'expire_after_seconds': 3600},
-                    {'key': [('h', 1), ('i', -1)], 'expire_after_seconds': 3600, 'unique': True},
+                    {'key':  ['e', ('f', -1)], 'unique': True},
+                    {'key': [('h', 1), ('i', -1)], 'unique': True},
                 ]
         MainModel.set_db(db)
         coll = MainModel.get_collection()
@@ -200,8 +200,8 @@ class TestIndexes:
         assert indexes['foobar']['key'] == [('a', 1)]
         assert indexes['b_-1']['sparse'] is True
         assert indexes['c_1_d_1']['unique'] is True
-        assert indexes['e_1_f_-1']['expireAfterSeconds'] == 3600
-        assert indexes['h_1_i_-1']['expireAfterSeconds'] == 3600 and indexes['h_1_i_-1']['unique'] is True
+        assert indexes['e_1_f_-1']['unique'] is True
+        assert indexes['h_1_i_-1']['unique'] is True
 
     def test_drop_indexes(self, db):
         db.get_collection('mainmodels').create_index('a')
