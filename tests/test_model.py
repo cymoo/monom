@@ -372,14 +372,6 @@ class TestFieldDefaultValue:
         obj = MainModel(f1=[{'f2': 31}])
         assert obj.f1[0].f1 == 13
 
-    def test_field_ignore_default(self):
-        class MainModel(BaseModel):
-            f1: int = 42
-
-        obj = MainModel(bypass_conversion=True)
-        with pytest.raises(AttributeError):
-            _ = obj.f1
-
 
 def test_field_exist_in_meta():
     with pytest.raises(ValueError) as err:
@@ -603,57 +595,53 @@ def test_model_to_json():
     assert isinstance(j_data1, str)
 
 
-def test_model_bypass_conversion():
-    class SubModel(EmbeddedModel):
-        f: str
-
-        class Meta:
-            converters = {
-                'f': lambda x: x.upper()
-            }
-
-    class MainModel(BaseModel):
-        f1: str
-        f2: SubModel
-        f3: List[SubModel]
-
-        class Meta:
-            converters = {
-                'f1': lambda x: x.upper()
-            }
-
-    obj1 = MainModel(bypass_conversion=True, f1='hello')
-    assert obj1.f1 == 'hello'
-
-    obj2 = MainModel(bypass_conversion=True, f2={'f': 'hello'})
-    assert obj2.f2.f == 'hello'
-
-    obj3 = MainModel(bypass_conversion=True, f3=[{'f': 'hello'}])
-    assert obj3.f3[0].f == 'hello'
-
-
-def test_model_bypass_validation():
-    class SubModel(EmbeddedModel):
-        f: int
-
-    class MainModel(BaseModel):
-        f1: int
-        f2: SubModel
-        f3: List[SubModel]
-
-    MainModel(bypass_validation=True, f1='abc')
-    MainModel(bypass_validation=True, f2={'f': 'abc'})
-    MainModel(bypass_validation=True, f3=[{'f': 'abc'}])
-
-
 def test_model_from_data_directly():
     class MainModel(BaseModel):
         f1: int
         f2: List[str]
 
-    obj = MainModel.from_data({'f1': [1, 2, 3], 'f2': 13})
+    obj = MainModel._from_clean_data({'f1': [1, 2, 3], 'f2': 13})
     with pytest.raises(ValueError):
         _ = obj.f2
+
+
+def test_model_property_setter():
+    class SubModel(EmbeddedModel):
+        name: str
+
+        @property
+        def foo(self):
+            raise AttributeError('readonly')
+
+        @foo.setter
+        def foo(self, value):
+            self.name = value
+
+    class MainModel(BaseModel):
+        name: str
+        password_hash: str
+        sub: SubModel
+
+        @property
+        def password(self):
+            raise AttributeError('readonly')
+
+        @password.setter
+        def password(self, value):
+            self.password_hash = value.upper()
+
+    obj = MainModel(name='aaa', password='abc')
+    assert obj.password_hash == 'ABC'
+
+    obj = MainModel(sub=SubModel(foo='abc'))
+    assert obj.sub.name == 'abc'
+
+    obj = MainModel(sub={'foo': 'abc'})
+    with pytest.raises(AttributeError):
+        _ = obj.sub.name
+
+    with pytest.raises(ValidationError):
+        MainModel(sub=SubModel(foo=123))
 
 
 class TestTrackFieldModify:
