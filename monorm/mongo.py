@@ -10,7 +10,7 @@ from pymongo.results import InsertOneResult, InsertManyResult, UpdateResult, Del
 
 from .fields import *
 from .model import BaseModel, ModelType
-from .utils import pluralize, info, normalize_indexes, default_index_name, have_same_shape,\
+from .utils import pluralize, info, normalize_indexes, default_index_name, have_same_shape, \
     not_none, warn, get_dict_item_with_dot
 
 __all__ = [
@@ -44,7 +44,7 @@ class CollectionMixin(type):
                    document: MutableMapping,
                    bypass_document_validation: bool = False,
                    session=None) -> InsertOneResult:
-        doc = cls._clean(document, bypass_validation=bypass_document_validation)
+        doc = cls._get_clean_data(document, bypass_validation=bypass_document_validation)
         return cls.get_collection().insert_one(
             doc, bypass_document_validation=bypass_document_validation, session=session
         )
@@ -54,7 +54,7 @@ class CollectionMixin(type):
                     ordered: bool = True,
                     bypass_document_validation: bool = False,
                     session=None) -> InsertManyResult:
-        docs = [cls._clean(document, bypass_validation=bypass_document_validation) for document in documents]
+        docs = [cls._get_clean_data(document, bypass_validation=bypass_document_validation) for document in documents]
         return cls.get_collection().insert_many(
             docs, ordered=ordered, bypass_document_validation=bypass_document_validation, session=session
         )
@@ -92,7 +92,7 @@ class CollectionMixin(type):
                     bypass_document_validation: bool = False,
                     collation: Collation = None,
                     session=None) -> UpdateResult:
-        doc = cls._clean(replacement, bypass_validation=bypass_document_validation)
+        doc = cls._get_clean_data(replacement, bypass_validation=bypass_document_validation)
         return cls.get_collection().replace_one(
             filter, doc, upsert=upsert, bypass_document_validation=bypass_document_validation,
             collation=collation, session=session
@@ -106,7 +106,7 @@ class CollectionMixin(type):
                    collation: Collation = None,
                    array_filters: List[dict] = None,
                    session=None) -> UpdateResult:
-        update = cls._clean_update(update, bypass_document_validation)
+        update = cls._get_clean_update(update, bypass_document_validation)
         return cls.get_collection().update_one(
             filter, update, upsert=upsert, bypass_document_validation=bypass_document_validation,
             collation=collation, array_filters=array_filters, session=session
@@ -120,7 +120,7 @@ class CollectionMixin(type):
                     bypass_document_validation: bool = False,
                     collation: Collation = None,
                     session=None) -> UpdateResult:
-        update = cls._clean_update(update, bypass_document_validation)
+        update = cls._get_clean_update(update, bypass_document_validation)
         return cls.get_collection().update_many(
             filter, update, upsert=upsert, array_filters=array_filters,
             bypass_document_validation=bypass_document_validation, collation=collation, session=session
@@ -151,7 +151,7 @@ class CollectionMixin(type):
                              upsert: bool = False,
                              return_document: bool = ReturnDocument.BEFORE,
                              session=None, **kw) -> Optional[T]:
-        doc = cls._clean(replacement, bypass_validation=bypass_document_validation)
+        doc = cls._get_clean_data(replacement, bypass_validation=bypass_document_validation)
         result = cls.get_collection().find_one_and_replace(
             filter, doc, projection=projection, sort=sort, upsert=upsert, return_document=return_document,
             session=session, **kw
@@ -169,7 +169,7 @@ class CollectionMixin(type):
                             return_document: bool = ReturnDocument.BEFORE,
                             array_filters: List[dict] = None,
                             session=None, **kw) -> Optional[T]:
-        update = cls._clean_update(update, bypass_document_validation)
+        update = cls._get_clean_update(update, bypass_document_validation)
         result = cls.get_collection().find_one_and_update(
             filter, update, projection=projection, sort=sort, upsert=upsert, return_document=return_document,
             array_filters=array_filters, session=session, **kw
@@ -273,7 +273,7 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
     @classmethod
     def from_document(cls, doc: MutableMapping):
         """Construct an instance of this class from the given document."""
-        obj = cls.from_data(doc)
+        obj = cls._from_clean_data(doc)
         obj._state = 'from_document'
         return obj
 
@@ -308,7 +308,7 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
             cls._build_indexes()
 
     @classmethod
-    def _clean_update(cls, update: MutableMapping, bypass_validation: bool = False) -> MutableMapping:
+    def _get_clean_update(cls, update: MutableMapping, bypass_validation: bool = False) -> MutableMapping:
         # From MongoDB 4.2, argument `update` can be an aggregation pipeline.
         if not isinstance(update, MutableMapping):
             return update

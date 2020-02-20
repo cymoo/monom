@@ -1,6 +1,6 @@
 from collections import abc
 from datetime import datetime
-from typing import Any, Callable, MutableMapping, MutableSequence, Union, Optional, Dict
+from typing import Any, Callable, MutableMapping, MutableSequence, Union, Dict
 
 from bson.objectid import ObjectId
 
@@ -122,7 +122,8 @@ class Field:
 
         if name not in dk:
             if isinstance(self, EmbeddedField):
-                rv = self.model.from_data(value)
+                # noinspection PyProtectedMember
+                rv = self.model._from_clean_data(value)
             else:
                 rv = self._convert_data_in_list_to_model(value)
             dk[name] = rv
@@ -138,7 +139,8 @@ class Field:
 
         dk['_data'][name] = value
         if isinstance(self, EmbeddedField):
-            dk[name] = self.model.from_data(value)
+            # noinspection PyProtectedMember
+            dk[name] = self.model._from_clean_data(value)
         if isinstance(self, ArrayField):
             dk[name] = self._convert_data_in_list_to_model(value)
 
@@ -151,10 +153,8 @@ class Field:
         string = []
         if self.name:
             string.append('name={!r}'.format(self.name))
-        if True:
-            string.append('required={!r}'.format(self.required))
-        if self.default:
-            string.append('default={!r}'.format(self.default))
+        string.append('required={!r}'.format(self.required))
+        string.append('default={!r}'.format(self.default))
         return '<{} {}>'.format(self.__class__.__name__, ' '.join(string))
 
     __repr__ = __str__
@@ -275,7 +275,7 @@ class ArrayField(ListField):
 
             if isinstance(field, EmbeddedField):
                 cls = field.model
-                return [cls.from_data(value) for value in vals]
+                return [cls._from_clean_data(value) for value in vals]
 
             if isinstance(field, ArrayField):
                 return [walk(field, value) for value in vals]
