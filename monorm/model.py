@@ -154,11 +154,15 @@ class BaseModel(metaclass=ModelType):
     _no_parse_hints: bool = True
     __no_type_check__: bool = False
 
-    def __init__(self,
-                 bypass_conversion: bool = False,
-                 bypass_validation: bool = False,
-                 **kw):
-        self._data = self._clean(kw, bypass_conversion, bypass_validation)
+    def __new__(cls, _dirty=True, **kw):
+        if _dirty:
+            return cls._from_dirty_data(kw)
+        else:
+            instance = super().__new__(cls)
+            instance._data = None
+            return instance
+
+    def __init__(self, **kw):
         self._modified_fields: Optional[Set[str]] = None
         self._deleted_fields: Optional[Set[str]] = None
 
@@ -179,20 +183,29 @@ class BaseModel(metaclass=ModelType):
             return default
 
     @classmethod
-    def from_data(cls, data: MutableMapping):
-        """Construct an instance of this class from the given data; bypass conversion and validation"""
-        obj = cls(bypass_conversion=True, bypass_validation=True)
-        obj._data = data
-        return obj
+    def _from_clean_data(cls, data: MutableMapping):
+        instance = cls(_dirty=False)
+        instance._data = data
+        return instance
 
     @classmethod
-    def _clean(cls,
-               data: MutableMapping,
-               bypass_conversion: bool = False,
-               bypass_validation: bool = False) -> MutableMapping:
+    def _from_dirty_data(cls, data: MutableMapping):
         root = EmbeddedField().init_root(cls)
-        if not bypass_conversion:
-            data = root.convert(data)
+        data = root.convert(data)
+        instance = cls._from_clean_data(data)
+
+        for key, value in cls.__dict__.items():
+            if key in data and isinstance(value, property) and value.fset:
+                setattr(instance, key, data[key])
+                data.pop(key)
+
+        root.validate(data)
+        return instance
+
+    @classmethod
+    def _get_clean_data(cls, data: MutableMapping, bypass_validation: bool = False) -> MutableMapping:
+        root = EmbeddedField().init_root(cls)
+        data = root.convert(data)
         if not bypass_validation:
             root.validate(data)
         return data
