@@ -15,4 +15,4 @@ from bson.json_util import loads as json_loads, dumps as json_dumps
 from datetime import datetime
 from typing import List, Any
 
-__version__ = '0.1.1'
+__version__ = '0.1.2'
