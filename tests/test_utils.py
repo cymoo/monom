@@ -7,10 +7,10 @@ from collections.abc import Iterable, Mapping
 import pytest
 from bson.son import SON
 
-import monorm.utils
-from monorm.utils import *
+import monom.utils
+from monom.utils import *
 
-doctest.testmod(monorm.utils)
+doctest.testmod(monom.utils)
 
 
 class TestDotSon:
@@ -201,7 +201,7 @@ class TestLogger:
         record = caplog.records[0]
 
         assert 'hello' in record.message
-        assert record.name == 'monorm'
+        assert record.name == 'monom'
 
     def test_set_logger(self, caplog):
         set_logger(logging.getLogger('foobar'))

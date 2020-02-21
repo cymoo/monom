@@ -7,8 +7,8 @@ import pytest
 from bson.objectid import ObjectId
 from bson.son import SON
 
-from monorm import BaseModel, EmbeddedModel
-from monorm.fields import *
+from monom import BaseModel, EmbeddedModel
+from monom.fields import *
 
 
 class TestBaseField:

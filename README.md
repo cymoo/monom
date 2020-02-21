@@ -1,14 +1,14 @@
-# Monorm: An Object-Document-Mapper for MongoDB with type hints
+# Monom: An object mapper for MongoDB with type hints
 
 ## Installation
 
 ```bash
-$ pip install monorm
+$ pip install monom
 ```
 
 ## About
 
-Monorm is designed to manage your models clearly and easily, which is as simple and thin as possible.
+Monom is designed to manage your models clearly and easily, which is as simple and thin as possible.
 
 * schema declaration using type hints
 
@@ -23,7 +23,7 @@ Monorm is designed to manage your models clearly and easily, which is as simple 
 ## A Quick Example
 
 ```python
-from monorm import *
+from monom import *
 
 class User(EmbeddedModel):
     name: str
@@ -64,7 +64,7 @@ post = Post(
     # same as the above
     # user=User(name='Lucy', email='foo@example.com'),
     title='hello world',
-    content='monorm is awesome...',
+    content='monom is awesome...',
     tags=['life', 'art']
 )
 post.save()
@@ -82,7 +82,7 @@ assert post.user.name == 'Lucy'
 No extra connection methods. Just pass pymongo's `Database` instance to your model.
 
 ```python
-from monorm import Model, MongoClient
+from monom import Model, MongoClient
 
 class MyModel(Model):
     pass
@@ -114,10 +114,10 @@ MyModel.set_db(db)
 #### Model Instance
 
 To create a new model object, provide values for its fields as constructor keyword arguments.
-Monorm will convert and validate these values when constructing the new instance.
+Monom will convert and validate these values when constructing the new instance.
 
 ```python
-from monorm import Model
+from monom import Model
 
 class User(Model):
     name: str
@@ -142,7 +142,7 @@ Save the data into MongoDB.
 3. `list` mutation cannot be tracked; but you can pass an keyword argument `full_update=True` to perform a full update.
 
 ```python
-from monorm import *
+from monom import *
 
 class User(Model):
     name: str
@@ -210,7 +210,7 @@ If it isn't called explicitly, plural form of the model's name will be the colle
 
 #### CRUD Methods
 
-Monorm adds no extra methods to operate MongoDB.
+Monom adds no extra methods to operate MongoDB.
 
 It proxies a subset of methods in `pymongo.collection:Collection`, which will perform data cleaning and convert the data from query operations to the model object.
 
@@ -221,7 +221,7 @@ It proxies a subset of methods in `pymongo.collection:Collection`, which will pe
 __`find` returns a `Cursor` of model instances instead of dicts. Before dump your documents to json, remember to do a small conversion.__
 
 ```python
-from monorm import *
+from monom import *
 
 class BinData(Model):
     name: str
@@ -245,7 +245,7 @@ You can add extra constraints for your models by defining an inner class named `
 * `required`: the field must exist in your data
 
 ```python
-from monorm import Model
+from monom import Model
 
 class User(Model):
     name: str
@@ -258,7 +258,7 @@ class User(Model):
 * `validators` and `converters`
 
 ```python
-from monorm import Model
+from monom import Model
 
 class User(Model):
     name: str
@@ -276,7 +276,7 @@ class User(Model):
 * `aliases`: sometimes you may want to save some fields in another names
 
 ```python
-from monorm import Model
+from monom import Model
 
 class User(Model):
     id: int
@@ -298,7 +298,7 @@ user.to_dict()
 * `Indexes`
 
 ```python
-from monorm import Model, DESCENDING
+from monom import Model, DESCENDING
 
 class FancyModel(Model):
     class Meta:
@@ -337,7 +337,7 @@ Default value is `True`.
 __Theses options can be set on `Model` or the subclass of `Model`; if set on `Model`, all subclasses will inherit them.__
 
 ```python
-from monorm import Model
+from monom import Model
 from bson.son import SON
 
 Model.dict_class = SON
@@ -356,7 +356,7 @@ assert isinstance(user.to_dict(), SON)
 * `switch_db`: switch to a different database temporarily
 
 ```python
-from monorm import Model, MongoClient, switch_db
+from monom import Model, MongoClient, switch_db
 
 class FancyModel(Model):
     pass
@@ -373,7 +373,7 @@ with switch_db(FancyModel, bar_db):
 * `switch_collection`: switch to a different collection temporarily
 
 ```python
-from monorm import Model, MongoClient, switch_collection
+from monom import Model, MongoClient, switch_collection
 
 class FancyModel(Model):
     pass
@@ -391,7 +391,7 @@ In several cases, some warnings will be emitted. If that's annoying, you can cha
 
 ```python
 import logging
-from monorm import get_logger, set_logger
+from monom import get_logger, set_logger
 
 # change level
 get_logger().setLevel(logging.ERROR)
@@ -407,8 +407,8 @@ set_logger(logging.getLogger('foobar'))
 If you like the classical style, here you are.
 
 ```python
-from monorm.fields import *
-from monorm import Model, EmbeddedModel, datetime
+from monom.fields import *
+from monom import Model, EmbeddedModel, datetime
 
 class Comment(EmbeddedModel):
     content = StringField()

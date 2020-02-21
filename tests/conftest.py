@@ -5,7 +5,7 @@ from pymongo import MongoClient
 @pytest.fixture
 def db():
     client = MongoClient()
-    db = client.get_database('monorm-test')
+    db = client.get_database('monom-test')
     yield db
-    client.drop_database('monorm-test')
+    client.drop_database('monom-test')
     client.close()

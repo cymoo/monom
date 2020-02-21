@@ -1,15 +1,15 @@
 import io
 from setuptools import setup
-import monorm
+import monom
 
 with io.open('README.md', 'rt') as f:
     readme = f.read()
 
 setup(
-    name='monorm',
-    version=monorm.__version__,
-    url='https://github.com/cymoo/monorm',
-    description='An Object-Document-Mapper for MongoDB with type hints.',
+    name='monom',
+    version=monom.__version__,
+    url='https://github.com/cymoo/monom',
+    description='An object mapper for MongoDB with type hints.',
     long_description=readme,
     long_description_content_type='text/markdown',
     author='cymoo',
@@ -29,7 +29,7 @@ setup(
         'Topic :: Utilities',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    packages=['monorm'],
+    packages=['monom'],
     python_requires='>=3.6',
     install_requires=['pymongo>=3.7'],
     extras_require={'dev': ['pytest']},

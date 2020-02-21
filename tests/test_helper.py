@@ -1,26 +1,26 @@
 import pytest
 from pymongo import MongoClient
 
-from monorm import Model, switch_collection, switch_db
+from monom import Model, switch_collection, switch_db
 
 
 def test_switch_db():
     class User(Model):
         pass
 
-    db = MongoClient().get_database('monorm-test')
+    db = MongoClient().get_database('monom-test')
     User.set_db(db)
 
-    assert User.get_db().name == 'monorm-test'
+    assert User.get_db().name == 'monom-test'
     assert User.get_collection().name == 'users'
 
     old_coll = User.get_collection()
 
-    with switch_db(User, MongoClient().get_database('monorm-test1')):
-        assert User.get_db().name == 'monorm-test1'
+    with switch_db(User, MongoClient().get_database('monom-test1')):
+        assert User.get_db().name == 'monom-test1'
         assert User.get_collection().name == 'users' and User.get_collection() != old_coll
 
-    assert User.get_db().name == 'monorm-test'
+    assert User.get_db().name == 'monom-test'
     assert User.get_collection().name == 'users'
 
 

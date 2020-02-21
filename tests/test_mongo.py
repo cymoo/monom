@@ -3,10 +3,10 @@ from pymongo.collection import ReturnDocument
 from pymongo.command_cursor import CommandCursor
 from pymongo.results import DeleteResult, UpdateResult
 
-from monorm import *
-from monorm.fields import *
-from monorm.mongo import Cursor
-from monorm.utils import random_lower_letters
+from monom import *
+from monom.fields import *
+from monom.mongo import Cursor
+from monom.utils import random_lower_letters
 
 
 class User(EmbeddedModel):
@@ -247,10 +247,10 @@ def test_set_db():
     class User(Model):
         greeting: str
 
-    db = MongoClient().get_database('monorm-test1')
+    db = MongoClient().get_database('monom-test1')
     User.set_db(db)
 
-    assert User.get_db().name == 'monorm-test1'
+    assert User.get_db().name == 'monom-test1'
 
 
 def test_default_collection(db):

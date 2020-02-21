@@ -487,8 +487,8 @@ def default_index_name(index_key: Union[Dict, MutableSequence]) -> str:
 
 
 # Logging utils
-DEFAULT_LOGGER_NAME = 'monorm'
-DEFAULT_LOGGING_FORMAT = '[%(asctime)s] %(levelname)s in `monorm`: %(message)s'
+DEFAULT_LOGGER_NAME = 'monom'
+DEFAULT_LOGGING_FORMAT = '[%(asctime)s] %(levelname)s in `monom`: %(message)s'
 DEFAULT_LOGGING_LEVEL = logging.WARNING
 
 _logger: Optional[logging.Logger] = None
