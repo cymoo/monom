@@ -178,8 +178,8 @@ class BaseModel(metaclass=ModelType):
     def get(self, name: str, default=None) -> Any:
         """Return the value for name if it has a value, else default."""
         try:
-            return getattr(self, name)
-        except AttributeError:
+            return self._data[name]
+        except KeyError:
             return default
 
     @classmethod

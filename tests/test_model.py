@@ -595,6 +595,20 @@ def test_model_to_json():
     assert isinstance(j_data1, str)
 
 
+def test_model_get():
+    class SubModel(EmbeddedModel):
+        f: int
+
+    class MainModel(BaseModel):
+        f1: SubModel
+        f2: List[SubModel]
+
+    obj = MainModel(f1=SubModel(f=1), f2=[SubModel(f=2), SubModel(f=3)])
+    assert obj.get('f1') == {'f': 1}
+    assert obj.get('f2') == [{'f': 2}, {'f': 3}]
+    assert obj.get('f3', 'foo') == 'foo'
+
+
 def test_model_from_data_directly():
     class MainModel(BaseModel):
         f1: int

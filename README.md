@@ -190,7 +190,7 @@ Return a json string. Some specific types (`ObjectId`, `datetime`, etc.) will be
 
 * `get(name, default=None)`
 
-Return the value for name if it has a value, else default.
+Return the value for name or default.
 
 #### Class Methods
 
