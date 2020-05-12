@@ -21,7 +21,7 @@ __all__ = [
 ]
 
 
-T = TypeVar('T', bound="MongoModel")
+T = TypeVar('T', bound=BaseModel)
 
 
 class Cursor(PymongoCursor):
@@ -262,7 +262,7 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
     def save_multiple(cls: Type[MongoModel], objs: Iterable[MongoModel]) -> Optional[BulkWriteResult]:
         """ Works like save() but applies to multiple models in a bulk_write
 
-         :return The list of objects with the `pk` properties filled in if they weren't already.
+         :return A BulkWriteResult containing some basic details about what was saved.
          """
         collection = cls.get_collection()
         writes = []
