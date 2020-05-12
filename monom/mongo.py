@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 from typing import Optional, Any, Union, List, Iterable, MutableMapping, TypeVar, Type
 
+from pymongo import InsertOne, UpdateOne
 from pymongo.collation import Collation
 from pymongo.collection import Collection
 from pymongo.collection import ReturnDocument
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor as PymongoCursor
 from pymongo.database import Database
-from pymongo.results import InsertOneResult, InsertManyResult, UpdateResult, DeleteResult
+from pymongo.results import InsertOneResult, InsertManyResult, UpdateResult, DeleteResult, BulkWriteResult
 
 from .fields import *
 from .model import BaseModel, ModelType
@@ -18,7 +21,7 @@ __all__ = [
 ]
 
 
-T = TypeVar('T', bound=BaseModel)
+T = TypeVar('T', bound="MongoModel")
 
 
 class Cursor(PymongoCursor):
@@ -234,7 +237,7 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
             collection.insert_one(self.to_dict(), **kw)
             self._clear_tracked_fields()
             self._state = 'after_save'
-        elif state in ('after_save', 'from_document'):
+        elif state in {'after_save', 'from_document'}:
             doc = self.to_dict()
             if self.pk is None:
                 raise RuntimeError("The document without an '_id' cannot be saved.")
@@ -254,6 +257,39 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
             raise RuntimeError('The document has been deleted.')
 
         return self
+
+    @classmethod
+    def save_multiple(cls: Type[MongoModel], objs: Iterable[MongoModel]) -> Optional[BulkWriteResult]:
+        """ Works like save() but applies to multiple models in a bulk_write
+
+         :return The list of objects with the `pk` properties filled in if they weren't already.
+         """
+        collection = cls.get_collection()
+        writes = []
+        for obj in objs:
+            state = obj._state
+            if state == 'before_save':
+                operation = InsertOne(obj.to_dict())
+                obj._state = "after_save"
+            elif state in {'after_save', 'from_document'}:
+                doc = obj.to_dict()
+                if obj.pk is None:
+                    continue
+                modified, deleted = obj._combine_tracked_fields()
+                update = {}
+                if modified:
+                    update['$set'] = {field: get_dict_item_with_dot(doc, field) for field in modified}
+                if deleted:
+                    update['$unset'] = {field: '' for field in deleted}
+                operation = UpdateOne({'_id': obj.pk}, update)
+            else:
+                continue
+            writes.append(operation)
+            obj._clear_tracked_fields()
+
+        if not writes:
+            return None
+        return collection.bulk_write(writes)
 
     def delete(self, **kw) -> None:
         """Delete the document from MongoDB"""
