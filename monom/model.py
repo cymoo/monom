@@ -1,6 +1,20 @@
 from collections import OrderedDict
 from datetime import datetime
-from typing import get_type_hints, Any, MutableMapping, Type, Union, Callable, List, Iterable, Optional, Set, Tuple
+from typing import (
+    Any,
+    Callable,
+    Iterable,
+    List,
+    MutableMapping,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 
 from bson.json_util import dumps
 from bson.objectid import ObjectId
@@ -32,14 +46,24 @@ def _hint_to_field(hint_type: Union[Type, Any]) -> Field:
         return hint_field_map[hint_type]()
     if isclass(hint_type) and issubclass(hint_type, EmbeddedModel):
         return EmbeddedField(hint_type)
-    # In Python 3.6 it's `typing.List` while 'list' in 3.7
-    if hint_type.__dict__.get('__origin__') in (list, List):
+
+    origin = get_origin(hint_type)
+    args = get_args(hint_type)
+
+    if origin in (list, List):
+        # In Python 3.6 it's `typing.List` while 'list' in 3.7
         # noinspection PyUnresolvedReferences
         arg = hint_type.__args__[0]
         if str(arg) == '~T':
             return ListField()
         else:
             return ArrayField(_hint_to_field(arg))
+    if origin is Union and len(args) == 2:
+        # Could be an Optional type
+        if isinstance(None, args[0]):
+            return OptionalField(_hint_to_field(args[1]))
+        if isinstance(None, args[1]):
+            return OptionalField(_hint_to_field(args[0]))
     raise TypeError('cannot convert {!r} to a field'.format(hint_type))
 
 
@@ -82,7 +106,7 @@ class ModelType(type):
             field.name = name
             field_order.append(name)
 
-            if cls.__dict__.get(name) is not None:
+            if name in cls.__dict__:
                 field.default = getattr(cls, name)
 
             setattr(cls, name, field)

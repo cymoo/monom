@@ -1,6 +1,6 @@
 from collections import abc
 from datetime import datetime
-from typing import Any, Callable, MutableMapping, MutableSequence, Union, Dict
+from typing import Any, Callable, Dict, MutableMapping, MutableSequence, Union
 
 from bson.objectid import ObjectId
 
@@ -21,7 +21,8 @@ __all__ = [
     'ListField',
     'ArrayField',
     'AnyField',
-    'ValidationError'
+    'ValidationError',
+    'OptionalField',
 ]
 
 
@@ -371,3 +372,17 @@ class EmbeddedField(DictField):
 
 class AnyField(Field):
     expected_types = (object,)
+
+
+class OptionalField(Field):
+    def __init__(self, field: Field, **kw):
+        super().__init__(**kw)
+
+        if isinstance(field, Field):
+            self.field = field
+        else:
+            raise TypeError('`Optional` can only accept instance of {!r}; not a {!r}.'.format(Field, field))
+
+    @property
+    def expected_types(self):
+        return self.field.expected_types + (type(None), )
