@@ -259,7 +259,7 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
         return self
 
     @classmethod
-    def save_multiple(cls: Type[MongoModel], objs: Iterable[MongoModel]) -> Optional[BulkWriteResult]:
+    def save_multiple(cls: Type[MongoModel], objs: Iterable[MongoModel], **kw) -> Optional[BulkWriteResult]:
         """ Works like save() but applies to multiple models in a bulk_write
 
          :return A BulkWriteResult containing some basic details about what was saved.
@@ -289,7 +289,7 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
 
         if not writes:
             return None
-        return collection.bulk_write(writes)
+        return collection.bulk_write(writes, **kw)
 
     def delete(self, **kw) -> None:
         """Delete the document from MongoDB"""
