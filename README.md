@@ -172,6 +172,10 @@ user.save(full_update=True)
 
 ```
 
+* `save_multiple(models, **kw)`
+
+Works like `save` but applies to multiple models in a bulk write; currently supports bulks of insertOne and updateOne.
+
 * `delete(**kw)`
 
 Delete the data from MongoDB.
