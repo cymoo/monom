@@ -246,19 +246,6 @@ json_dumps(BinData.get_collection().find())
 
 You can add extra constraints for your models by defining an inner class named `Meta` in your model or embedded model.
 
-* `required`: the field must exist in your data
-
-```python
-from monom import Model
-
-class User(Model):
-    name: str
-    email: str
-
-    class Meta:
-        required = ['name']
-```
-
 * `validators` and `converters`
 
 ```python

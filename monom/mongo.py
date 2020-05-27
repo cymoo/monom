@@ -370,10 +370,10 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
                         field.validate(new_value)
                     doc[notation] = new_value
 
-            elif op in ('$push', '$addToSet'):
+            elif op in {'$push', '$addToSet'}:
                 for notation, value in doc.items():
                     field = cls._parse_dot_notation(notation)
-                    if not isinstance(field, ListField):
+                    if not field.supports_op(op):
                         raise_invalid_type_error(field, op)
                     if isinstance(field, ArrayField):
                         item_field = field.field

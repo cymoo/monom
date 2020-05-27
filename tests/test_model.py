@@ -1,13 +1,13 @@
 from collections import abc
 from collections import OrderedDict
 from datetime import datetime
-from typing import List, Any
+from typing import List, Any, Optional
 
 import pytest
 from bson.objectid import ObjectId
 from bson.son import SON
 
-from monom import BaseModel, EmbeddedModel
+from monom import BaseModel, EmbeddedModel, Model
 from monom.fields import *
 
 
@@ -379,7 +379,7 @@ def test_field_exist_in_meta():
             f: int
 
             class Meta:
-                required = ['f1']
+                aliases = {'f1': 'f2'}
     assert 'not defined' in err.value.args[0]
 
 
@@ -466,9 +466,6 @@ class TestFieldRequired:
         class SubModel(EmbeddedModel):
             f1: int
             f2: int
-
-            class Meta:
-                required = ['f1']
 
         class MainModel(BaseModel):
             f1: List[SubModel]
