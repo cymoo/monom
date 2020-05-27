@@ -477,7 +477,7 @@ class TestFieldRequired:
 
 def test_field_converters():
     class SubModel(EmbeddedModel):
-        f: str
+        f: Optional[str]
 
         class Meta:
             converters = {
@@ -485,9 +485,9 @@ def test_field_converters():
             }
 
     class MainModel(BaseModel):
-        f1: str
-        f2: SubModel
-        f3: List[SubModel]
+        f1: Optional[str]
+        f2: Optional[SubModel]
+        f3: Optional[List[SubModel]]
 
         class Meta:
             converters = {
@@ -506,7 +506,7 @@ def test_field_converters():
 
 def test_field_validators():
     class SubModel(EmbeddedModel):
-        f: str
+        f: Optional[str]
 
         class Meta:
             validators = {
@@ -514,9 +514,9 @@ def test_field_validators():
             }
 
     class MainModel(BaseModel):
-        f1: str
-        f2: SubModel
-        f3: List[SubModel]
+        f1: Optional[str]
+        f2: Optional[SubModel]
+        f3: Optional[List[SubModel]]
 
         class Meta:
             validators = {
@@ -618,7 +618,7 @@ def test_model_from_data_directly():
 
 def test_model_property_setter():
     class SubModel(EmbeddedModel):
-        name: str
+        name: Optional[str]
 
         @property
         def foo(self):
@@ -629,9 +629,9 @@ def test_model_property_setter():
             self.name = value
 
     class MainModel(BaseModel):
-        name: str
-        password_hash: str
-        sub: SubModel
+        name: Optional[str]
+        password_hash: Optional[str]
+        sub: Optional[SubModel]
 
         @property
         def password(self):
@@ -775,12 +775,12 @@ class TestModelDictClass:
 
 def test_model_extra_data_warning(caplog):
     class SubModel(EmbeddedModel):
-        f: int
+        f: Optional[int]
 
     class MainModel(BaseModel):
-        f1: int
-        f2: SubModel
-        f3: List[SubModel]
+        f1: Optional[int]
+        f2: Optional[SubModel]
+        f3: Optional[List[SubModel]]
 
     MainModel(f4=13)
     MainModel(f2={'f1': 13})
