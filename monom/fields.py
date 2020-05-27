@@ -1,6 +1,6 @@
 from collections import abc
 from datetime import datetime
-from typing import Any, Callable, Dict, MutableMapping, MutableSequence, Union
+from typing import Any, Callable, Dict, MutableMapping, MutableSequence, Union, Optional, TypeVar, Generic, Set
 
 from bson.objectid import ObjectId
 
@@ -75,16 +75,16 @@ class Field:
     def __init__(
         self,
         name: str = None,
-        required: bool = False,
         default: Any = _missing,
         converter: Callable = None,
         validator: Callable[[Any], bool] = None,
     ):
         self.name = name
-        self.required = required
         self.default = default
         self.converter = converter
         self.validator = validator
+        self._getter_converter: Optional[Callable[[Any], Any]] = None
+        self._supported_ops: Set[str] = set()
 
     def convert(self, value: Any) -> Any:
         default = self.default
@@ -96,14 +96,17 @@ class Field:
             value = self.converter(value)
         return value
 
+    def supports_op(self, op: str) -> bool:
+        """ Does this field support a specific operation? """
+        return op in self._supported_ops
+
     def validate(self, value: Any) -> None:
-        if value is _missing and self.required:
+        if value is _missing:
             raise ValidationError('Field {!r} is missing.'.format(self.name))
 
-        if value is not _missing:
-            validate_type(value, self.expected_types)
-            if self.validator is not None:
-                validate_fn(value, self.validator)
+        validate_type(value, self.expected_types)
+        if self.validator is not None:
+            validate_fn(value, self.validator)
 
     def __get__(self, instance, cls) -> Any:
         if instance is None:
@@ -118,16 +121,11 @@ class Field:
             raise AttributeError('Field {!r} has no value; '
                                  'did you filter it out using projection query?'.format(name)) from None
 
-        if not isinstance(self, (EmbeddedField, ArrayField)):
+        if self._getter_converter is None:
             return value
 
         if name not in dk:
-            if isinstance(self, EmbeddedField):
-                # noinspection PyProtectedMember
-                rv = self.model._from_clean_data(value)
-            else:
-                rv = self._convert_data_in_list_to_model(value)
-            dk[name] = rv
+            dk[name] = self._getter_converter(value)
 
         return dk[name]
 
@@ -154,7 +152,6 @@ class Field:
         string = []
         if self.name:
             string.append('name={!r}'.format(self.name))
-        string.append('required={!r}'.format(self.required))
         string.append('default={!r}'.format(self.default))
         return '<{} {}>'.format(self.__class__.__name__, ' '.join(string))
 
@@ -222,6 +219,10 @@ class ObjectIdField(Field):
 class ListField(Field):
     expected_types = (abc.MutableSequence, tuple)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._supported_ops |= {'$push', '$addToSet'}
+
 
 class ArrayField(ListField):
     def __init__(self, field, **kw):
@@ -236,6 +237,7 @@ class ArrayField(ListField):
             raise TypeError('`ArrayField` can only accept instance of {!r} or '
                             'subclass of `EmbeddedModel`; not a {!r}.'
                             .format(Field, EmbeddedModel, field))
+        self._getter_converter = self._convert_data_in_list_to_model
 
     def convert(self, values: Any) -> Union[MutableSequence, Missing]:
         values = super().convert(values)
@@ -304,6 +306,7 @@ class EmbeddedField(DictField):
             raise TypeError('`EmbeddedField` can only accept subclass '
                             'of `EmbeddedModel`, not {!r}.'.format(embedded_model))
         self.model = embedded_model
+        self._getter_converter = self.model._from_clean_data
 
     def init_root(self, model):
         self.model = model
@@ -374,14 +377,35 @@ class AnyField(Field):
     expected_types = (object,)
 
 
-class OptionalField(Field):
-    def __init__(self, field: Field, **kw):
+InnerField = TypeVar("InnerField", bound=Field)
+
+
+class OptionalField(Field, Generic[InnerField]):
+    """ A wrapper around any other Field which allows None """
+    def __init__(self, field: InnerField, **kw):
         super().__init__(**kw)
 
         if isinstance(field, Field):
             self.field = field
         else:
             raise TypeError('`Optional` can only accept instance of {!r}; not a {!r}.'.format(Field, field))
+        self._getter_converter = self.field._getter_converter
+
+    def convert(self, value: Any) -> Union[None, MutableMapping, Missing]:
+        """ Uses inner field convert if the value is not None """
+        if value is None:
+            return None
+        return self.field.convert(value)
+
+    def validate(self, value: Any) -> None:
+        """ For an OptionalField, missing and None values are okay """
+        if value is _missing or value is None:
+            return
+        self.field.validate(value)
+
+    def supports_op(self, op: str) -> bool:
+        """ Optional fields support the operations of their inner fields """
+        return self.field.supports_op(op)
 
     @property
     def expected_types(self):

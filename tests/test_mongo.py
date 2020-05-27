@@ -1,3 +1,5 @@
+from typing import Optional
+
 import pytest
 from pymongo.collection import ReturnDocument
 from pymongo.command_cursor import CommandCursor
@@ -17,17 +19,17 @@ class User(EmbeddedModel):
 
 class Comment(EmbeddedModel):
     user: User
-    content: str
+    content: Optional[str]
     created_on: datetime = datetime.utcnow
     extra: int = 42
 
 
 class Post(Model):
-    user: User
-    title: str
-    content: str
-    comments: List[Comment]
-    tags: List[str]
+    user: Optional[User]
+    title: Optional[str]
+    content: Optional[str]
+    comments: Optional[List[Comment]]
+    tags: Optional[List[str]]
     visible: bool = True
     created_on: datetime = datetime.utcnow
 

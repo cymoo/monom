@@ -60,9 +60,9 @@ def _hint_to_field(hint_type: Union[Type, Any]) -> Field:
             return ArrayField(_hint_to_field(arg))
     if origin is Union and len(args) == 2:
         # Could be an Optional type
-        if isinstance(None, args[0]):
+        if type(None) == args[0]:
             return OptionalField(_hint_to_field(args[1]))
-        if isinstance(None, args[1]):
+        if type(None) == args[1]:
             return OptionalField(_hint_to_field(args[0]))
     raise TypeError('cannot convert {!r} to a field'.format(hint_type))
 
@@ -115,7 +115,6 @@ class ModelType(type):
         fields = {key: value for key, value in cls.__dict__.items() if isinstance(value, Field)}
         meta = cls.__dict__.get('Meta')
         aliases = getattr(meta, 'aliases', [])
-        required = getattr(meta, 'required', [])
         converters = getattr(meta, 'converters', {})
         validators = getattr(meta, 'validators', {})
 
@@ -132,10 +131,6 @@ class ModelType(type):
         for field_name, alias in aliases:
             ensure_field_exist(field_name)
             fields[field_name].name = alias
-
-        for field_name in required:
-            ensure_field_exist(field_name)
-            fields[field_name].required = True
 
         for field_name, converter in converters.items():
             ensure_field_exist(field_name)
