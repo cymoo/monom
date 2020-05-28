@@ -113,6 +113,11 @@ class TestSave:
         post = Post.find_one()
         assert 'music' in post.tags
 
+    def test_save_no_changes(self, db):
+        Post.set_db(db)
+        post = Post(tags=['life', 'art']).save()
+        post.save()
+
     def test_cannot_save_without_an_id(self, db_populated):
         Post.set_db(db_populated)
         post = Post.find_one({}, {'_id': False})
@@ -125,6 +130,43 @@ class TestSave:
         post.delete()
         with pytest.raises(RuntimeError):
             post.save()
+
+
+class TestSaveMultiple:
+    def test_save_state(self, db):
+        Post.set_db(db)
+        post = Post(title='hello')
+        post_2 = Post(title='hello')
+        assert post._state == 'before_save'
+
+        Post.save_multiple([post, post_2])
+        assert post._state == 'after_save'
+        assert post_2._state == 'after_save'
+
+        (post, post_2) = Post.find()
+        assert post._state == 'from_document'
+        assert post_2._state == 'from_document'
+
+    def test_update_multiple(self, db):
+        Post.set_db(db)
+        post = Post(title='hello', tags=[])
+        post_2 = Post(title='hello')
+        post.save()
+        post_2.save()
+        tags = post.tags
+        tags.append('music')
+        post.tags = tags
+        post_2.title = "goodbye"
+        Post.save_multiple([post, post_2])
+
+        (post, post_2) = Post.find()
+        assert 'music' in post.tags
+        assert post_2.title == "goodbye"
+
+    def test_save_no_changes(self, db):
+        Post.set_db(db)
+        post = Post(tags=['life', 'art']).save()
+        Post.save_multiple([post])
 
 
 class TestDelete:

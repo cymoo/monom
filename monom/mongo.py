@@ -247,6 +247,8 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
             else:
                 modified, deleted = self._combine_tracked_fields()
                 update = {}
+                if not modified | deleted:
+                    return self
                 if modified:
                     update['$set'] = {field: get_dict_item_with_dot(doc, field) for field in modified}
                 if deleted:
@@ -277,6 +279,8 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
                     continue
                 modified, deleted = obj._combine_tracked_fields()
                 update = {}
+                if not modified | deleted:
+                    continue
                 if modified:
                     update['$set'] = {field: get_dict_item_with_dot(doc, field) for field in modified}
                 if deleted:
