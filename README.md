@@ -111,8 +111,6 @@ MyModel.set_db(db)
 
 ### Model
 
-#### Model Instance
-
 To create a new model object, provide values for its fields as constructor keyword arguments.
 Monom will convert and validate these values when constructing the new instance.
 
@@ -128,6 +126,28 @@ user = User(name='foo')
 
 You can declare a field with an initial value, which acts as the field's default value.
 If the value is a `callable`, it will be called on each saving or inserting.
+
+#### Class Methods
+
+* `set_db(db)`
+
+Pass a `pymongo.database.Database` to the model.
+
+* `set_collection(collection)`
+
+Pass a string or a `pymongo.collection.Collection` to the model.
+
+If it isn't called explicitly, plural form of the model's name will be the collection name.
+
+* `get_db()`
+
+* `get_collection()`
+
+#### Properties
+
+* `pk`
+
+An alias for the primary key (`_id` in MongoDB).
 
 #### Methods
 
@@ -155,7 +175,11 @@ class User(Model):
 User.set_db(MongoClient().get_database('demo'))
 
 # insert a doc
-User(name='Lucy', email='lucy@foo.com', hobbits=['music', 'sport']).save()
+User(
+    name='Lucy',
+    email='lucy@foo.com',
+    hobbits=['music', 'sport']
+).save()
 
 # find a doc filtering out some fields
 user = User.find_one({}, {'created_on': False})
@@ -180,10 +204,6 @@ Works like `save` but applies to multiple models in a bulk write; currently supp
 
 Delete the data from MongoDB.
 
-* `pk`
-
-An alias for the primary key (`_id` in MongoDB).
-
 * `to_dict()`
 
 Return an ordered dict containing the instance's data with the same order as the field definition order.
@@ -195,22 +215,6 @@ Return a json string. Some specific types (`ObjectId`, `datetime`, etc.) will be
 * `get(name, default=None)`
 
 Return the value for name or default.
-
-#### Class Methods
-
-* `set_db(db)`
-
-Pass a `pymongo.database.Database` to the model.
-
-* `set_collection(collection)`
-
-Pass a string or a `pymongo.collection.Collection` to the model.
-
-If it isn't called explicitly, plural form of the model's name will be the collection name.
-
-* `get_db()`
-
-* `get_collection()`
 
 #### CRUD Methods
 
