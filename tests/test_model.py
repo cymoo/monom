@@ -245,11 +245,13 @@ class TestEmbeddedField:
 
     def test_pass_in_wrong_type(self):
         with pytest.raises(TypeError) as err:
+
             class Foo:
                 pass
 
             class FooModel(BaseModel):
                 f = EmbeddedField(Foo)
+
         assert 'EmbeddedModel' in err.value.args[0]
 
 
@@ -287,10 +289,13 @@ class TestArrayField:
 
         class MainModel(BaseModel):
             f1: List[SubModel]
-        obj = MainModel(f1=[
-            {'f1': 'a', 'f2': [{'f1': 'b', 'f2': [1, 2, 3]}]},
-            {'f1': 'c', 'f2': [{'f1': 'd', 'f2': [4, 5, 6]}]}
-        ])
+
+        obj = MainModel(
+            f1=[
+                {'f1': 'a', 'f2': [{'f1': 'b', 'f2': [1, 2, 3]}]},
+                {'f1': 'c', 'f2': [{'f1': 'd', 'f2': [4, 5, 6]}]},
+            ]
+        )
         assert obj.f1[1].f1 == 'c'
         assert obj.f1[1].f2[0].f1 == 'd'
         assert obj.f1[1].f2[0].f2[1] == 5
@@ -307,10 +312,12 @@ class TestArrayField:
         class MainModel(BaseModel):
             f1: List[List[SubModel]]
 
-        obj = MainModel(f1=[
-            [{'f1': 'a', 'f2': [{'f1': 'b', 'f2': [1, 2, 3]}]}],
-            [{'f1': 'c', 'f2': [{'f1': 'd', 'f2': [4, 5, 6]}]}]
-        ])
+        obj = MainModel(
+            f1=[
+                [{'f1': 'a', 'f2': [{'f1': 'b', 'f2': [1, 2, 3]}]}],
+                [{'f1': 'c', 'f2': [{'f1': 'd', 'f2': [4, 5, 6]}]}],
+            ]
+        )
 
         assert obj.f1[1][0].f1 == 'c'
         assert obj.f1[1][0].f2[0].f2[1] == 5
@@ -319,20 +326,25 @@ class TestArrayField:
 
     def test_pass_in_wrong_type(self):
         with pytest.raises(TypeError) as err:
+
             class Foo:
                 pass
 
             class FooModel(BaseModel):
                 f = ArrayField(Foo)
+
         assert 'EmbeddedModel' in err.value.args[0]
 
 
 def test_invalid_field_type():
     class Foo:
         pass
+
     with pytest.raises(TypeError) as err:
+
         class MainModel(BaseModel):
             x: Foo
+
     assert 'cannot convert' in err.value.args[0]
 
 
@@ -375,11 +387,13 @@ class TestFieldDefaultValue:
 
 def test_field_exist_in_meta():
     with pytest.raises(ValueError) as err:
+
         class MainModel(BaseModel):
             f: int
 
             class Meta:
                 required = ['f1']
+
     assert 'not defined' in err.value.args[0]
 
 
@@ -408,6 +422,7 @@ class TestFieldAliases:
 
             class Meta:
                 aliases = [('f1', '1f'), ('f2', '2f')]
+
         obj = MainModel(f2={'f1': 13})
         assert obj.f2.f1 == 13
         assert obj.to_dict()['2f'] == {'1f': 13}
@@ -425,6 +440,7 @@ class TestFieldAliases:
 
             class Meta:
                 aliases = [('f1', '1f'), ('f2', '2f')]
+
         obj = MainModel(f2=[{'f1': 13}, {'f1': 42}])
         assert obj.f2[1].f1 == 42
         assert obj.to_dict()['2f'][1]['1f'] == 42
@@ -472,6 +488,7 @@ class TestFieldRequired:
 
         class MainModel(BaseModel):
             f1: List[SubModel]
+
         MainModel(f1=[{'f1': 13}])
         with pytest.raises(ValidationError) as err:
             MainModel(f1=[{'f2': 42}])
@@ -483,9 +500,7 @@ def test_field_converters():
         f: str
 
         class Meta:
-            converters = {
-                'f': lambda x: x.upper()
-            }
+            converters = {'f': lambda x: x.upper()}
 
     class MainModel(BaseModel):
         f1: str
@@ -493,9 +508,7 @@ def test_field_converters():
         f3: List[SubModel]
 
         class Meta:
-            converters = {
-                'f1': lambda x: x.upper()
-            }
+            converters = {'f1': lambda x: x.upper()}
 
     obj1 = MainModel(f1='hello')
     assert obj1.f1 == 'HELLO'
@@ -512,9 +525,7 @@ def test_field_validators():
         f: str
 
         class Meta:
-            validators = {
-                'f': lambda x: len(x) > 3
-            }
+            validators = {'f': lambda x: len(x) > 3}
 
     class MainModel(BaseModel):
         f1: str
@@ -522,9 +533,7 @@ def test_field_validators():
         f3: List[SubModel]
 
         class Meta:
-            validators = {
-                'f1': lambda x: len(x) > 3
-            }
+            validators = {'f1': lambda x: len(x) > 3}
 
     MainModel(f1='hello')
 

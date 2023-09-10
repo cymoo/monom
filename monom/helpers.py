@@ -6,10 +6,7 @@ from pymongo.database import Database
 
 from . import Model
 
-__all__ = [
-    'switch_db',
-    'switch_collection'
-]
+__all__ = ['switch_db', 'switch_collection']
 
 
 @contextmanager

@@ -9,12 +9,26 @@ from pymongo.collection import ReturnDocument
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor as PymongoCursor
 from pymongo.database import Database
-from pymongo.results import InsertOneResult, InsertManyResult, UpdateResult, DeleteResult, BulkWriteResult
+from pymongo.results import (
+    InsertOneResult,
+    InsertManyResult,
+    UpdateResult,
+    DeleteResult,
+    BulkWriteResult,
+)
 
 from .fields import *
 from .model import BaseModel, ModelType
-from .utils import pluralize, info, normalize_indexes, default_index_name, have_same_shape, \
-    not_none, warn, get_dict_item_with_dot
+from .utils import (
+    pluralize,
+    info,
+    normalize_indexes,
+    default_index_name,
+    have_same_shape,
+    not_none,
+    warn,
+    get_dict_item_with_dot,
+)
 
 __all__ = [
     'MongoModel',
@@ -36,30 +50,41 @@ class Cursor(PymongoCursor):
 
 # noinspection PyShadowingBuiltins,PyMethodParameters
 class CollectionMixin(type):
-    """Proxy frequently-used methods of :class:`pymongo:collection:Collection`.
-    """
+    """Proxy frequently-used methods of :class:`pymongo:collection:Collection`."""
 
     #################################
     # Insertion
     #################################
 
-    def insert_one(cls: Type[T],
-                   document: MutableMapping,
-                   bypass_document_validation: bool = False,
-                   session=None) -> InsertOneResult:
-        doc = cls._get_clean_data(document, bypass_validation=bypass_document_validation)
+    def insert_one(
+        cls: Type[T],
+        document: MutableMapping,
+        bypass_document_validation: bool = False,
+        session=None,
+    ) -> InsertOneResult:
+        doc = cls._get_clean_data(
+            document, bypass_validation=bypass_document_validation
+        )
         return cls.get_collection().insert_one(
             doc, bypass_document_validation=bypass_document_validation, session=session
         )
 
-    def insert_many(cls: Type[T],
-                    documents: Iterable[MutableMapping],
-                    ordered: bool = True,
-                    bypass_document_validation: bool = False,
-                    session=None) -> InsertManyResult:
-        docs = [cls._get_clean_data(document, bypass_validation=bypass_document_validation) for document in documents]
+    def insert_many(
+        cls: Type[T],
+        documents: Iterable[MutableMapping],
+        ordered: bool = True,
+        bypass_document_validation: bool = False,
+        session=None,
+    ) -> InsertManyResult:
+        docs = [
+            cls._get_clean_data(document, bypass_validation=bypass_document_validation)
+            for document in documents
+        ]
         return cls.get_collection().insert_many(
-            docs, ordered=ordered, bypass_document_validation=bypass_document_validation, session=session
+            docs,
+            ordered=ordered,
+            bypass_document_validation=bypass_document_validation,
+            session=session,
         )
 
     #################################
@@ -78,104 +103,157 @@ class CollectionMixin(type):
     # Deletion
     #################################
 
-    def delete_one(cls: Type[T], filter: dict, collation: Collation = None, session=None) -> DeleteResult:
-        return cls.get_collection().delete_one(filter, collation=collation, session=session)
+    def delete_one(
+        cls: Type[T], filter: dict, collation: Collation = None, session=None
+    ) -> DeleteResult:
+        return cls.get_collection().delete_one(
+            filter, collation=collation, session=session
+        )
 
-    def delete_many(cls: Type[T], filter: dict, collation: Collation = None, session=None) -> DeleteResult:
-        return cls.get_collection().delete_many(filter, collation=collation, session=session)
+    def delete_many(
+        cls: Type[T], filter: dict, collation: Collation = None, session=None
+    ) -> DeleteResult:
+        return cls.get_collection().delete_many(
+            filter, collation=collation, session=session
+        )
 
     #################################
     # Update
     #################################
 
-    def replace_one(cls: Type[T],
-                    filter: dict,
-                    replacement: MutableMapping,
-                    upsert: bool = False,
-                    bypass_document_validation: bool = False,
-                    collation: Collation = None,
-                    session=None) -> UpdateResult:
-        doc = cls._get_clean_data(replacement, bypass_validation=bypass_document_validation)
+    def replace_one(
+        cls: Type[T],
+        filter: dict,
+        replacement: MutableMapping,
+        upsert: bool = False,
+        bypass_document_validation: bool = False,
+        collation: Collation = None,
+        session=None,
+    ) -> UpdateResult:
+        doc = cls._get_clean_data(
+            replacement, bypass_validation=bypass_document_validation
+        )
         return cls.get_collection().replace_one(
-            filter, doc, upsert=upsert, bypass_document_validation=bypass_document_validation,
-            collation=collation, session=session
+            filter,
+            doc,
+            upsert=upsert,
+            bypass_document_validation=bypass_document_validation,
+            collation=collation,
+            session=session,
         )
 
-    def update_one(cls: Type[T],
-                   filter: dict,
-                   update: MutableMapping,
-                   upsert: bool = False,
-                   bypass_document_validation: bool = False,
-                   collation: Collation = None,
-                   array_filters: List[dict] = None,
-                   session=None) -> UpdateResult:
+    def update_one(
+        cls: Type[T],
+        filter: dict,
+        update: MutableMapping,
+        upsert: bool = False,
+        bypass_document_validation: bool = False,
+        collation: Collation = None,
+        array_filters: List[dict] = None,
+        session=None,
+    ) -> UpdateResult:
         update = cls._get_clean_update(update, bypass_document_validation)
         return cls.get_collection().update_one(
-            filter, update, upsert=upsert, bypass_document_validation=bypass_document_validation,
-            collation=collation, array_filters=array_filters, session=session
+            filter,
+            update,
+            upsert=upsert,
+            bypass_document_validation=bypass_document_validation,
+            collation=collation,
+            array_filters=array_filters,
+            session=session,
         )
 
-    def update_many(cls: Type[T],
-                    filter: dict,
-                    update: MutableMapping,
-                    upsert: bool = False,
-                    array_filters: List[dict] = None,
-                    bypass_document_validation: bool = False,
-                    collation: Collation = None,
-                    session=None) -> UpdateResult:
+    def update_many(
+        cls: Type[T],
+        filter: dict,
+        update: MutableMapping,
+        upsert: bool = False,
+        array_filters: List[dict] = None,
+        bypass_document_validation: bool = False,
+        collation: Collation = None,
+        session=None,
+    ) -> UpdateResult:
         update = cls._get_clean_update(update, bypass_document_validation)
         return cls.get_collection().update_many(
-            filter, update, upsert=upsert, array_filters=array_filters,
-            bypass_document_validation=bypass_document_validation, collation=collation, session=session
+            filter,
+            update,
+            upsert=upsert,
+            array_filters=array_filters,
+            bypass_document_validation=bypass_document_validation,
+            collation=collation,
+            session=session,
         )
 
     #################################
     # FindAndXXX
     #################################
 
-    def find_one_and_delete(cls: Type[T],
-                            filter: dict,
-                            projection: Union[list, dict] = None,
-                            sort: List[tuple] = None,
-                            session=None, **kw) -> Optional[T]:
-
+    def find_one_and_delete(
+        cls: Type[T],
+        filter: dict,
+        projection: Union[list, dict] = None,
+        sort: List[tuple] = None,
+        session=None,
+        **kw,
+    ) -> Optional[T]:
         result = cls.get_collection().find_one_and_delete(
             filter, projection=projection, sort=sort, session=session, **kw
         )
         if result is not None:
             return cls.from_document(result)
 
-    def find_one_and_replace(cls: Type[T],
-                             filter: dict,
-                             replacement: MutableMapping,
-                             bypass_document_validation: bool = False,  # extra argument
-                             projection: Union[list, dict] = None,
-                             sort: List[tuple] = None,
-                             upsert: bool = False,
-                             return_document: bool = ReturnDocument.BEFORE,
-                             session=None, **kw) -> Optional[T]:
-        doc = cls._get_clean_data(replacement, bypass_validation=bypass_document_validation)
+    def find_one_and_replace(
+        cls: Type[T],
+        filter: dict,
+        replacement: MutableMapping,
+        bypass_document_validation: bool = False,  # extra argument
+        projection: Union[list, dict] = None,
+        sort: List[tuple] = None,
+        upsert: bool = False,
+        return_document: bool = ReturnDocument.BEFORE,
+        session=None,
+        **kw,
+    ) -> Optional[T]:
+        doc = cls._get_clean_data(
+            replacement, bypass_validation=bypass_document_validation
+        )
         result = cls.get_collection().find_one_and_replace(
-            filter, doc, projection=projection, sort=sort, upsert=upsert, return_document=return_document,
-            session=session, **kw
+            filter,
+            doc,
+            projection=projection,
+            sort=sort,
+            upsert=upsert,
+            return_document=return_document,
+            session=session,
+            **kw,
         )
         if result is not None:
             return cls.from_document(result)
 
-    def find_one_and_update(cls: Type[T],
-                            filter: dict,
-                            update: dict,
-                            bypass_document_validation: bool = False,  # extra argument
-                            projection: Union[list, dict] = None,
-                            sort: List[tuple] = None,
-                            upsert: bool = False,
-                            return_document: bool = ReturnDocument.BEFORE,
-                            array_filters: List[dict] = None,
-                            session=None, **kw) -> Optional[T]:
+    def find_one_and_update(
+        cls: Type[T],
+        filter: dict,
+        update: dict,
+        bypass_document_validation: bool = False,  # extra argument
+        projection: Union[list, dict] = None,
+        sort: List[tuple] = None,
+        upsert: bool = False,
+        return_document: bool = ReturnDocument.BEFORE,
+        array_filters: List[dict] = None,
+        session=None,
+        **kw,
+    ) -> Optional[T]:
         update = cls._get_clean_update(update, bypass_document_validation)
         result = cls.get_collection().find_one_and_update(
-            filter, update, projection=projection, sort=sort, upsert=upsert, return_document=return_document,
-            array_filters=array_filters, session=session, **kw
+            filter,
+            update,
+            projection=projection,
+            sort=sort,
+            upsert=upsert,
+            return_document=return_document,
+            array_filters=array_filters,
+            session=session,
+            **kw,
         )
         if result is not None:
             return cls.from_document(result)
@@ -184,7 +262,9 @@ class CollectionMixin(type):
     # Aggregation
     #################################
 
-    def aggregate(cls: Type[T], pipeline: List[dict], session=None, **kw) -> CommandCursor:
+    def aggregate(
+        cls: Type[T], pipeline: List[dict], session=None, **kw
+    ) -> CommandCursor:
         return cls.get_collection().aggregate(pipeline, session, **kw)
 
     def estimated_document_count(cls: Type[T], **kw) -> int:
@@ -193,7 +273,9 @@ class CollectionMixin(type):
     def count_documents(cls: Type[T], filter: dict, session=None, **kw) -> int:
         return cls.get_collection().count_documents(filter, session=session, **kw)
 
-    def distinct(cls: Type[T], key: str, filter: dict = None, session=None, **kw) -> list:
+    def distinct(
+        cls: Type[T], key: str, filter: dict = None, session=None, **kw
+    ) -> list:
         return cls.get_collection().distinct(key, filter=filter, session=session, **kw)
 
 
@@ -248,7 +330,9 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
                 modified, deleted = self._combine_tracked_fields()
                 update = {}
                 if modified:
-                    update['$set'] = {field: get_dict_item_with_dot(doc, field) for field in modified}
+                    update['$set'] = {
+                        field: get_dict_item_with_dot(doc, field) for field in modified
+                    }
                 if deleted:
                     update['$unset'] = {field: '' for field in deleted}
                 collection.update_one({'_id': self.pk}, update, **kw)
@@ -259,11 +343,13 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
         return self
 
     @classmethod
-    def save_multiple(cls: Type[MongoModel], objs: Iterable[MongoModel], **kw) -> Optional[BulkWriteResult]:
-        """ Works like save() but applies to multiple models in a bulk_write
+    def save_multiple(
+        cls: Type[MongoModel], objs: Iterable[MongoModel], **kw
+    ) -> Optional[BulkWriteResult]:
+        """Works like save() but applies to multiple models in a bulk_write
 
-         :return A BulkWriteResult containing some basic details about what was saved.
-         """
+        :return A BulkWriteResult containing some basic details about what was saved.
+        """
         collection = cls.get_collection()
         writes = []
         for obj in objs:
@@ -278,7 +364,9 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
                 modified, deleted = obj._combine_tracked_fields()
                 update = {}
                 if modified:
-                    update['$set'] = {field: get_dict_item_with_dot(doc, field) for field in modified}
+                    update['$set'] = {
+                        field: get_dict_item_with_dot(doc, field) for field in modified
+                    }
                 if deleted:
                     update['$unset'] = {field: '' for field in deleted}
                 operation = UpdateOne({'_id': obj.pk}, update)
@@ -337,24 +425,34 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
         elif isinstance(collection, str):
             cls._collection = cls.get_db().get_collection(collection, **options)
         else:
-            raise ValueError('expect a string or a {!r}, not type {!r}'.format(Collection, type(collection)))
+            raise ValueError(
+                'expect a string or a {!r}, not type {!r}'.format(
+                    Collection, type(collection)
+                )
+            )
 
         if cls.auto_build_index:
             info('You may disable automatic index modification when in production.')
             cls._build_indexes()
 
     @classmethod
-    def _get_clean_update(cls, update: MutableMapping, bypass_validation: bool = False) -> MutableMapping:
+    def _get_clean_update(
+        cls, update: MutableMapping, bypass_validation: bool = False
+    ) -> MutableMapping:
         # From MongoDB 4.2, argument `update` can be an aggregation pipeline.
         if not isinstance(update, MutableMapping):
             return update
 
         # noinspection PyShadowingNames
         def raise_invalid_type_error(field: Field, op: str) -> None:
-            raise ValidationError('not expect field type {!r} with {!r}'.format(type(field), op))
+            raise ValidationError(
+                'not expect field type {!r} with {!r}'.format(type(field), op)
+            )
 
         # noinspection PyShadowingNames
-        def check_dot_notation(op: str, doc: MutableMapping, field_type: Optional[Type[Field]] = None) -> None:
+        def check_dot_notation(
+            op: str, doc: MutableMapping, field_type: Optional[Type[Field]] = None
+        ) -> None:
             for notation in doc.keys():
                 field = cls._parse_dot_notation(notation)
                 if field_type is not None:
@@ -408,7 +506,9 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
     @classmethod
     def _parse_dot_notation(cls, name: str) -> Field:
         def raise_parse_error(k: str, fld: Field):
-            raise ValueError('cannot parse {!r}; not expect {!r} after {!r}'.format(name, k, fld))
+            raise ValueError(
+                'cannot parse {!r}; not expect {!r} after {!r}'.format(name, k, fld)
+            )
 
         field = EmbeddedField().init_root(cls)
         for key in name.split('.'):
@@ -433,7 +533,11 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
                     if key in fields:
                         field = fields[key]
                     else:
-                        warn('{!r} not defined in model {!r}. Did you misspell it?'.format(key, field.model))
+                        warn(
+                            '{!r} not defined in model {!r}. Did you misspell it?'.format(
+                                key, field.model
+                            )
+                        )
                         return AnyField()
                 else:
                     raise_parse_error(key, field)
@@ -443,7 +547,9 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
                 else:
                     raise_parse_error(key, field)
             else:
-                raise ValueError('cannot parse {!r}; not a valid identifier {!r}'.format(name, key))
+                raise ValueError(
+                    'cannot parse {!r}; not a valid identifier {!r}'.format(name, key)
+                )
         return field
 
     @classmethod
@@ -451,7 +557,10 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
         collection = cls.get_collection()
         indexes = normalize_indexes(getattr(cls.__dict__.get('Meta'), 'indexes', []))
 
-        old = {default_index_name(index['key']): index for index in collection.list_indexes()}
+        old = {
+            default_index_name(index['key']): index
+            for index in collection.list_indexes()
+        }
         new = {default_index_name(index['key']): index for index in indexes}
 
         existing = [(new[name], old[name]) for name in set(new) & set(old)]
@@ -489,10 +598,15 @@ class MongoModel(BaseModel, metaclass=MongoModelType):
                 continue
             elif same_index_option and not_none([new_ttl, old_ttl]):
                 # use collMod to modify the index
-                cls.get_db().command({
-                    'collMod': collection.name,
-                    'index': {'name': new_index['name'], 'expireAfterSeconds': new_ttl}
-                })
+                cls.get_db().command(
+                    {
+                        'collMod': collection.name,
+                        'index': {
+                            'name': new_index['name'],
+                            'expireAfterSeconds': new_ttl,
+                        },
+                    }
+                )
             else:
                 # drop and recreate the index
                 if new_ttl is not None:

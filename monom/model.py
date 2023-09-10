@@ -1,6 +1,18 @@
 from collections import OrderedDict
 from datetime import datetime
-from typing import get_type_hints, Any, MutableMapping, Type, Union, Callable, List, Iterable, Optional, Set, Tuple
+from typing import (
+    get_type_hints,
+    Any,
+    MutableMapping,
+    Type,
+    Union,
+    Callable,
+    List,
+    Iterable,
+    Optional,
+    Set,
+    Tuple,
+)
 
 from bson.json_util import dumps
 from bson.objectid import ObjectId
@@ -8,10 +20,7 @@ from bson.objectid import ObjectId
 from .fields import *
 from .utils import *
 
-__all__ = [
-    'BaseModel',
-    'EmbeddedModel'
-]
+__all__ = ['BaseModel', 'EmbeddedModel']
 
 hint_field_map = {
     str: StringField,
@@ -70,8 +79,10 @@ class ModelType(type):
         field_order = cls.__dict__['_field_order']
 
         if len(field_order) != 0:
-            warn('You are mixing type-hint-style with django-orm-style in {!r}; '
-                 'the field definition order may not be reserved.'.format(cls))
+            warn(
+                'You are mixing type-hint-style with django-orm-style in {!r}; '
+                'the field definition order may not be reserved.'.format(cls)
+            )
 
         for name, hint in types.items():
             # filter out type hints of parent classes
@@ -88,7 +99,11 @@ class ModelType(type):
             setattr(cls, name, field)
 
     def _process_meta(cls) -> None:
-        fields = {key: value for key, value in cls.__dict__.items() if isinstance(value, Field)}
+        fields = {
+            key: value
+            for key, value in cls.__dict__.items()
+            if isinstance(value, Field)
+        }
         meta = cls.__dict__.get('Meta')
         aliases = getattr(meta, 'aliases', [])
         required = getattr(meta, 'required', [])
@@ -203,7 +218,9 @@ class BaseModel(metaclass=ModelType):
         return instance
 
     @classmethod
-    def _get_clean_data(cls, data: MutableMapping, bypass_validation: bool = False) -> MutableMapping:
+    def _get_clean_data(
+        cls, data: MutableMapping, bypass_validation: bool = False
+    ) -> MutableMapping:
         root = EmbeddedField().init_root(cls)
         data = root.convert(data)
         if not bypass_validation:
@@ -270,4 +287,5 @@ class BaseModel(metaclass=ModelType):
 
 class EmbeddedModel(BaseModel):
     """Base class of user-defined embedded model"""
+
     _no_parse_hints: bool = True

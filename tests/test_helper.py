@@ -18,7 +18,9 @@ def test_switch_db():
 
     with switch_db(User, MongoClient().get_database('monom-test1')):
         assert User.get_db().name == 'monom-test1'
-        assert User.get_collection().name == 'users' and User.get_collection() != old_coll
+        assert (
+            User.get_collection().name == 'users' and User.get_collection() != old_coll
+        )
 
     assert User.get_db().name == 'monom-test'
     assert User.get_collection().name == 'users'

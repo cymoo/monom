@@ -21,7 +21,7 @@ class TestDotSon:
             {'name': 'java', 'score': 7},
             {'name': 'python', 'score': 9},
             {'name': 'javascript', 'score': 9},
-        ]
+        ],
     }
 
     @staticmethod
@@ -90,7 +90,7 @@ def test_same_shape():
     assert not same([1, 2, 3], [1, 3, 2])
     assert same(
         {'a': 1, 'b': [{'c': [1, 2, 3, {'d': [4, 5, {'e': {'f': [6, 7]}}]}]}]},
-        {'a': 1, 'b': [{'c': [1, 2, 3, {'d': [4, 5, {'e': {'f': [6, 7]}}]}]}]}
+        {'a': 1, 'b': [{'c': [1, 2, 3, {'d': [4, 5, {'e': {'f': [6, 7]}}]}]}]},
     )
     assert same({'a': 1, 'b': 2}, OrderedDict([('a', 1), ('b', 2)]))
     assert same({'a': 1, 'b': 2}, SON([('a', 1), ('b', 2)]))
@@ -169,6 +169,7 @@ def test_cached_property():
         def bar(self):
             self.i += 1
             return 42
+
     f = Foo()
     assert f.i == 1
     assert f.bar == 42
@@ -187,11 +188,17 @@ def test_normalize_indexes():
     assert normalize_indexes([]) == []
     assert normalize_indexes(['a']) == [{'key': [('a', 1)]}]
     assert normalize_indexes([('a', -1)]) == [{'key': [('a', -1)]}]
-    assert normalize_indexes(['a', ('b', -1)]) == [{'key': [('a', 1)]}, {'key': [('b', -1)]}]
+    assert normalize_indexes(['a', ('b', -1)]) == [
+        {'key': [('a', 1)]},
+        {'key': [('b', -1)]},
+    ]
     assert normalize_indexes([[('a', 1), ('b', 1)]]) == [{'key': [('a', 1), ('b', 1)]}]
-    assert normalize_indexes([['a', ('b', 1), ('c', -1)]]) == [{'key': [('a', 1), ('b', 1), ('c', -1)]}]
-    assert normalize_indexes([{'key': [('a', 1)], 'expire_after_seconds': 3600}]) == \
-        [{'expireAfterSeconds': 3600, 'key': [('a', 1)]}]
+    assert normalize_indexes([['a', ('b', 1), ('c', -1)]]) == [
+        {'key': [('a', 1), ('b', 1), ('c', -1)]}
+    ]
+    assert normalize_indexes([{'key': [('a', 1)], 'expire_after_seconds': 3600}]) == [
+        {'expireAfterSeconds': 3600, 'key': [('a', 1)]}
+    ]
 
 
 class TestLogger:

@@ -21,7 +21,7 @@ __all__ = [
     'ListField',
     'ArrayField',
     'AnyField',
-    'ValidationError'
+    'ValidationError',
 ]
 
 
@@ -45,27 +45,37 @@ def validate_type(value: Any, expected_types: tuple) -> None:
 
 def validate_max_value(value: Any, max_value: Union[int, float]) -> None:
     if value > max_value:
-        raise ValidationError('{!r} is greater than the max value {}.'.format(value, max_value))
+        raise ValidationError(
+            '{!r} is greater than the max value {}.'.format(value, max_value)
+        )
 
 
 def validate_min_value(value: Any, min_value: Union[int, float]) -> None:
     if value < min_value:
-        raise ValidationError('{!r} is less than the min value {}.'.format(value, min_value))
+        raise ValidationError(
+            '{!r} is less than the min value {}.'.format(value, min_value)
+        )
 
 
 def validate_max_length(value: Any, max_length: int) -> None:
     if len(value) > max_length:
-        raise ValidationError('Length of {!r} is greater than the max value {}.'.format(value, max_length))
+        raise ValidationError(
+            'Length of {!r} is greater than the max value {}.'.format(value, max_length)
+        )
 
 
 def validate_min_length(value: Any, min_length: int) -> None:
     if len(value) < min_length:
-        raise ValidationError('Length of {!r} is less than the min value {}.'.format(value, min_length))
+        raise ValidationError(
+            'Length of {!r} is less than the min value {}.'.format(value, min_length)
+        )
 
 
 def validate_fn(value: Any, validator: Callable[[Any], bool]) -> None:
     if not validator(value):
-        raise ValidationError('{!r} was not accepted by validator {!r}.'.format(value, validator))
+        raise ValidationError(
+            '{!r} was not accepted by validator {!r}.'.format(value, validator)
+        )
 
 
 class Field:
@@ -114,8 +124,10 @@ class Field:
         try:
             value = dk['_data'][name]
         except KeyError:
-            raise AttributeError('Field {!r} has no value; '
-                                 'did you filter it out using projection query?'.format(name)) from None
+            raise AttributeError(
+                'Field {!r} has no value; '
+                'did you filter it out using projection query?'.format(name)
+            ) from None
 
         if not isinstance(self, (EmbeddedField, ArrayField)):
             return value
@@ -180,7 +192,12 @@ class StringField(Field):
 class NumberField(Field):
     expected_types = (int, float)
 
-    def __init__(self, max_value: Union[int, float] = None, min_value: Union[int, float] = None, **kw):
+    def __init__(
+        self,
+        max_value: Union[int, float] = None,
+        min_value: Union[int, float] = None,
+        **kw
+    ):
         super().__init__(**kw)
         self.max_value = max_value
         self.min_value = min_value
@@ -225,6 +242,7 @@ class ListField(Field):
 class ArrayField(ListField):
     def __init__(self, field, **kw):
         from .model import EmbeddedModel
+
         super().__init__(**kw)
 
         if isinstance(field, Field):
@@ -232,9 +250,12 @@ class ArrayField(ListField):
         elif isclass(field) and issubclass(field, EmbeddedModel):
             self.field = EmbeddedField(field)
         else:
-            raise TypeError('`ArrayField` can only accept instance of {!r} or '
-                            'subclass of `EmbeddedModel`; not a {!r}.'
-                            .format(Field, EmbeddedModel, field))
+            raise TypeError(
+                '`ArrayField` can only accept instance of {!r} or '
+                'subclass of `EmbeddedModel`; not a {!r}.'.format(
+                    Field, EmbeddedModel, field
+                )
+            )
 
     def convert(self, values: Any) -> Union[MutableSequence, Missing]:
         values = super().convert(values)
@@ -242,7 +263,11 @@ class ArrayField(ListField):
             return _missing
 
         if not isinstance(values, (abc.MutableSequence, tuple)):
-            raise ValueError('{!r} must be a list-like object, not a {!r}.'.format(values, type(values)))
+            raise ValueError(
+                '{!r} must be a list-like object, not a {!r}.'.format(
+                    values, type(values)
+                )
+            )
 
         return [self.field.convert(value) for value in values]
 
@@ -261,12 +286,19 @@ class ArrayField(ListField):
                 return field
             else:
                 return inner(field)
+
         return inner(self)
 
-    def _convert_data_in_list_to_model(self, values: MutableSequence) -> MutableSequence:
+    def _convert_data_in_list_to_model(
+        self, values: MutableSequence
+    ) -> MutableSequence:
         def walk(array_field: ArrayField, vals: MutableSequence):
             if not isinstance(vals, abc.MutableSequence):
-                raise ValueError('{!r} must be a list-like object, not a {!r}.'.format(vals, type(vals)))
+                raise ValueError(
+                    '{!r} must be a list-like object, not a {!r}.'.format(
+                        vals, type(vals)
+                    )
+                )
 
             if not isinstance(self.innermost(), EmbeddedField):
                 return vals
@@ -295,13 +327,16 @@ class DictField(Field):
 class EmbeddedField(DictField):
     def __init__(self, embedded_model=None, **kw):
         from .model import EmbeddedModel
+
         super().__init__(**kw)
         if embedded_model is None:
             return
 
         if not isclass(embedded_model) or not issubclass(embedded_model, EmbeddedModel):
-            raise TypeError('`EmbeddedField` can only accept subclass '
-                            'of `EmbeddedModel`, not {!r}.'.format(embedded_model))
+            raise TypeError(
+                '`EmbeddedField` can only accept subclass '
+                'of `EmbeddedModel`, not {!r}.'.format(embedded_model)
+            )
         self.model = embedded_model
 
     def init_root(self, model):
@@ -328,7 +363,9 @@ class EmbeddedField(DictField):
             return _missing
 
         if not isinstance(obj, MutableMapping):
-            raise ValueError('{!r} must be a dict-like object, not a {!r}.'.format(obj, type(obj)))
+            raise ValueError(
+                '{!r} must be a dict-like object, not a {!r}.'.format(obj, type(obj))
+            )
 
         fields = self.fields
         rv = self.model.dict_class()
@@ -361,7 +398,11 @@ class EmbeddedField(DictField):
             names = {field.name for field in fields.values()}
             for name, value in obj.items():
                 if name not in names:
-                    warn('{!r} not defined in model {!r}. Did you misspell it?'.format(name, self.model))
+                    warn(
+                        '{!r} not defined in model {!r}. Did you misspell it?'.format(
+                            name, self.model
+                        )
+                    )
 
     def __str__(self):
         return '<{} model={!r}>'.format(self.__class__.__name__, self.model)

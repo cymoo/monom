@@ -49,12 +49,12 @@ __all__ = [
     'get_logger',
     'debug',
     'info',
-    'warn'
+    'warn',
 ]
 
 
 class DotSon(abc.Mapping):
-    """ A :class:`DotSon` is a special dict whose item can be accessed using dot notation.
+    """A :class:`DotSon` is a special dict whose item can be accessed using dot notation.
     There will be a performance penalty when accessing deep-nested element.
 
     >>> d = DotSon({'name': 'foo', 'hobbits': [{'name': 'bar'}]})
@@ -159,7 +159,7 @@ def random_string(length: int = 10, type: str = 'all') -> str:
         'letter': string.ascii_letters,
         'uppercase': string.ascii_uppercase,
         'lowercase': string.ascii_lowercase,
-        'all': string.digits + string.ascii_letters
+        'all': string.digits + string.ascii_letters,
     }
     return ''.join(random.choice(choices[type]) for _ in range(length))
 
@@ -259,7 +259,9 @@ def have_same_shape(obj1: Any, obj2: Any) -> bool:
         if set(obj1) != set(obj2):
             return False
         return all(have_same_shape(obj1[key], obj2[key]) for key in obj1.keys())
-    elif isinstance(obj1, (abc.MutableSequence, tuple)) and isinstance(obj2, (abc.MutableSequence, tuple)):
+    elif isinstance(obj1, (abc.MutableSequence, tuple)) and isinstance(
+        obj2, (abc.MutableSequence, tuple)
+    ):
         if len(obj1) != len(obj2):
             return False
         return all(have_same_shape(item[0], item[1]) for item in zip(obj1, obj2))
@@ -423,7 +425,9 @@ class cachedproperty:
         return res
 
 
-def normalize_indexes(indexes: List[Union[str, tuple, list, MutableMapping]]) -> List[Dict]:
+def normalize_indexes(
+    indexes: List[Union[str, tuple, list, MutableMapping]]
+) -> List[Dict]:
     """Convert the abbr to the arguments that can be used by :meth:`pymongo.collection.Collection.create_index`:
     [{'key': [('a', 1), ('b', -1), ...], 'option1': value1, ...}, ...]
 
@@ -446,7 +450,12 @@ def normalize_indexes(indexes: List[Union[str, tuple, list, MutableMapping]]) ->
     def normalize(idx: Union[str, tuple, list]):
         if isinstance(idx, str):
             return [(idx, 1)]
-        elif isinstance(idx, tuple) and len(idx) == 2 and type(idx[0]) is str and idx[1] in (1, -1):
+        elif (
+            isinstance(idx, tuple)
+            and len(idx) == 2
+            and type(idx[0]) is str
+            and idx[1] in (1, -1)
+        ):
             return [idx]
         elif isinstance(idx, list):
             return reduce(add, [normalize(x) for x in idx])
@@ -534,4 +543,5 @@ def warn(msg: str, *args, **kw) -> None:
 
 if __name__ == '__main__':
     import doctest
+
     doctest.testmod()

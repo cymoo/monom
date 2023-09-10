@@ -66,7 +66,7 @@ class TestSave:
             user={'first_name': 'Foo', 'last_name': 'Bar'},
             title='hello world',
             content='wish world a better place',
-            tags=['life', 'art']
+            tags=['life', 'art'],
         )
         assert post.pk is None
         post.save()
@@ -79,7 +79,7 @@ class TestSave:
             user={'first_name': 'Foo', 'last_name': 'Bar'},
             title='hello world',
             content='wish world a better place',
-            tags=['life', 'art']
+            tags=['life', 'art'],
         )
         post.save()
         post.title = 'hello earth'
@@ -134,7 +134,7 @@ class TestDelete:
             user={'first_name': 'Foo', 'last_name': 'Bar'},
             title='hello world',
             content='wish world a better place',
-            tags=['life', 'art']
+            tags=['life', 'art'],
         )
         post.save()
         post.delete()
@@ -151,7 +151,7 @@ class TestDelete:
             user={'first_name': 'Foo', 'last_name': 'Bar'},
             title='hello world',
             content='wish world a better place',
-            tags=['life', 'art']
+            tags=['life', 'art'],
         )
         with pytest.raises(RuntimeError):
             post.delete()
@@ -172,8 +172,9 @@ class TestIndexes:
                     ('b', -1),
                     ['c', 'd'],
                     ['e', ('f', -1)],
-                    [('h', 1), ('i', -1)]
+                    [('h', 1), ('i', -1)],
                 ]
+
         MainModel.set_db(db)
         coll = MainModel.get_collection()
         indexes = coll.index_information()
@@ -189,10 +190,11 @@ class TestIndexes:
                 indexes = [
                     {'key': 'a', 'name': 'foobar'},
                     {'key': ('b', -1), 'sparse': True},
-                    {'key':  ['c', 'd'], 'unique': True},
-                    {'key':  ['e', ('f', -1)], 'unique': True},
+                    {'key': ['c', 'd'], 'unique': True},
+                    {'key': ['e', ('f', -1)], 'unique': True},
                     {'key': [('h', 1), ('i', -1)], 'unique': True},
                 ]
+
         MainModel.set_db(db)
         coll = MainModel.get_collection()
         indexes = coll.index_information()
@@ -209,6 +211,7 @@ class TestIndexes:
         class MainModel(Model):
             class Meta:
                 indexes = ['b']
+
         MainModel.set_db(db)
         coll = MainModel.get_collection()
         indexes = coll.index_information()
@@ -217,13 +220,14 @@ class TestIndexes:
         assert 'b_1' in indexes
 
     def test_modify_ttl_index(self, db):
-        db.get_collection('mainmodels').create_index('expires_at', expireAfterSeconds=2400)
+        db.get_collection('mainmodels').create_index(
+            'expires_at', expireAfterSeconds=2400
+        )
 
         class MainModel(Model):
             class Meta:
-                indexes = [
-                    {'key': 'expires_at', 'expire_after_seconds': 3600}
-                ]
+                indexes = [{'key': 'expires_at', 'expire_after_seconds': 3600}]
+
         MainModel.set_db(db)
         coll = MainModel.get_collection()
         indexes = coll.index_information()
@@ -308,8 +312,12 @@ class TestParseDotNotation:
             assert MainDotNotationModel._parse_dot_notation('f2.f4.0')
 
     def test_dict_field_in_array_field(self):
-        assert isinstance(MainDotNotationModel._parse_dot_notation('f3.0.f4'), DictField)
-        assert isinstance(MainDotNotationModel._parse_dot_notation('f3.2111.f4.a'), AnyField)
+        assert isinstance(
+            MainDotNotationModel._parse_dot_notation('f3.0.f4'), DictField
+        )
+        assert isinstance(
+            MainDotNotationModel._parse_dot_notation('f3.2111.f4.a'), AnyField
+        )
         with pytest.raises(ValueError):
             assert MainDotNotationModel._parse_dot_notation('f3.123.f4.0')
 
@@ -318,12 +326,16 @@ class TestParseDotNotation:
         assert isinstance(MainDotNotationModel._parse_dot_notation('f5.2341'), AnyField)
         assert isinstance(MainDotNotationModel._parse_dot_notation('f5.$'), AnyField)
         assert isinstance(MainDotNotationModel._parse_dot_notation('f5.$[]'), AnyField)
-        assert isinstance(MainDotNotationModel._parse_dot_notation('f5.$[foobar]'), AnyField)
+        assert isinstance(
+            MainDotNotationModel._parse_dot_notation('f5.$[foobar]'), AnyField
+        )
         with pytest.raises(ValueError):
             assert MainDotNotationModel._parse_dot_notation('f5.foobar')
 
     def test_embedded_field(self):
-        assert isinstance(MainDotNotationModel._parse_dot_notation('f2.f1'), StringField)
+        assert isinstance(
+            MainDotNotationModel._parse_dot_notation('f2.f1'), StringField
+        )
         assert isinstance(MainDotNotationModel._parse_dot_notation('f2.f2.0'), IntField)
         assert isinstance(MainDotNotationModel._parse_dot_notation('f2.f3.0'), AnyField)
         assert isinstance(MainDotNotationModel._parse_dot_notation('f2.f4.a'), AnyField)
@@ -333,17 +345,25 @@ class TestParseDotNotation:
             MainDotNotationModel._parse_dot_notation('f2.f2.0.a')
 
     def test_array_field(self):
-        assert isinstance(MainDotNotationModel._parse_dot_notation('f3.0.f3'), ListField)
+        assert isinstance(
+            MainDotNotationModel._parse_dot_notation('f3.0.f3'), ListField
+        )
         assert isinstance(MainDotNotationModel._parse_dot_notation('f7.0'), ArrayField)
-        assert isinstance(MainDotNotationModel._parse_dot_notation('f7.0.$'), EmbeddedField)
-        assert isinstance(MainDotNotationModel._parse_dot_notation('f7.0.$.f3.$[]'), AnyField)
+        assert isinstance(
+            MainDotNotationModel._parse_dot_notation('f7.0.$'), EmbeddedField
+        )
+        assert isinstance(
+            MainDotNotationModel._parse_dot_notation('f7.0.$.f3.$[]'), AnyField
+        )
 
         with pytest.raises(ValueError):
             MainDotNotationModel._parse_dot_notation('f7.$[].$[foo].0')
 
     def test_any_field(self):
         assert isinstance(MainDotNotationModel._parse_dot_notation('f2.f5.a'), AnyField)
-        assert isinstance(MainDotNotationModel._parse_dot_notation('f3.0.f5.a'), AnyField)
+        assert isinstance(
+            MainDotNotationModel._parse_dot_notation('f3.0.f5.a'), AnyField
+        )
         assert isinstance(MainDotNotationModel._parse_dot_notation('f6.a'), AnyField)
         assert isinstance(MainDotNotationModel._parse_dot_notation('f6.a.b'), AnyField)
 
@@ -366,55 +386,98 @@ class TestInsert:
     def test_insert_one(self, db):
         Post.set_db(db)
 
-        rv = Post.insert_one({
-            'user': {'first_name': 'Foo', 'last_name': 'Bar'},
-            'title': 'hello world',
-            'content': 'wish world a better place',
-            'tags': ['life', 'art']
-        })
+        rv = Post.insert_one(
+            {
+                'user': {'first_name': 'Foo', 'last_name': 'Bar'},
+                'title': 'hello world',
+                'content': 'wish world a better place',
+                'tags': ['life', 'art'],
+            }
+        )
         assert isinstance(rv.inserted_id, ObjectId)
 
         with pytest.raises(ValidationError):
-            Post.insert_one({'user': {'first_name': 42, 'last_name': 'Bar'}, 'title': 'hello world'})
+            Post.insert_one(
+                {'user': {'first_name': 42, 'last_name': 'Bar'}, 'title': 'hello world'}
+            )
 
     def test_insert_one_bypass_validation(self, db):
         Post.set_db(db)
 
         rv = Post.insert_one(
             {'user': {'first_name': 42, 'last_name': 'Bar'}, 'title': 'hello world'},
-            bypass_document_validation=True
+            bypass_document_validation=True,
         )
         assert isinstance(rv.inserted_id, ObjectId)
 
     def test_insert_many(self, db):
         Post.set_db(db)
 
-        rv = Post.insert_many([
-            {'user': {'first_name': 'Foo', 'last_name': 'Bar'}, 'title': 'hello world'},
-            {'user': {'first_name': 'Fox', 'last_name': 'Bax'}, 'title': 'hello earth'},
-            {'user': {'first_name': 'Fax', 'last_name': 'Box'}, 'title': 'hello solar'},
-        ])
+        rv = Post.insert_many(
+            [
+                {
+                    'user': {'first_name': 'Foo', 'last_name': 'Bar'},
+                    'title': 'hello world',
+                },
+                {
+                    'user': {'first_name': 'Fox', 'last_name': 'Bax'},
+                    'title': 'hello earth',
+                },
+                {
+                    'user': {'first_name': 'Fax', 'last_name': 'Box'},
+                    'title': 'hello solar',
+                },
+            ]
+        )
         assert len(rv.inserted_ids) == 3
 
         with pytest.raises(ValidationError):
-            Post.insert_many([
-                {'user': {'first_name': 42, 'last_name': 'Bar'}, 'title': 'hello world'},
-                {'user': {'first_name': 'Fox', 'last_name': 'Bax'}, 'title': 'hello earth'},
-            ])
+            Post.insert_many(
+                [
+                    {
+                        'user': {'first_name': 42, 'last_name': 'Bar'},
+                        'title': 'hello world',
+                    },
+                    {
+                        'user': {'first_name': 'Fox', 'last_name': 'Bax'},
+                        'title': 'hello earth',
+                    },
+                ]
+            )
         with pytest.raises(ValidationError):
-            Post.insert_many([
-                {'user': {'first_name': 'Foo', 'last_name': 'Bar'}, 'title': 'hello world'},
-                {'user': {'first_name': 42, 'last_name': 'Bax'}, 'title': 'hello earth'},
-            ])
+            Post.insert_many(
+                [
+                    {
+                        'user': {'first_name': 'Foo', 'last_name': 'Bar'},
+                        'title': 'hello world',
+                    },
+                    {
+                        'user': {'first_name': 42, 'last_name': 'Bax'},
+                        'title': 'hello earth',
+                    },
+                ]
+            )
 
     def test_insert_many_bypass_validation(self, db):
         Post.set_db(db)
 
-        rv = Post.insert_many([
-            {'user': {'first_name': 'Foo', 'last_name': 'Bar'}, 'title': 'hello world'},
-            {'user': {'first_name': 'Fox', 'last_name': 'Bax'}, 'title': 'hello earth'},
-            {'user': {'first_name': 42, 'last_name': 'Box'}, 'title': 'hello solar'},
-        ], bypass_document_validation=True)
+        rv = Post.insert_many(
+            [
+                {
+                    'user': {'first_name': 'Foo', 'last_name': 'Bar'},
+                    'title': 'hello world',
+                },
+                {
+                    'user': {'first_name': 'Fox', 'last_name': 'Bax'},
+                    'title': 'hello earth',
+                },
+                {
+                    'user': {'first_name': 42, 'last_name': 'Box'},
+                    'title': 'hello solar',
+                },
+            ],
+            bypass_document_validation=True,
+        )
         assert len(rv.inserted_ids) == 3
 
 
@@ -506,7 +569,12 @@ class TestUpdate:
 
         rv = Post.replace_one(
             {'user.first_name': 'foo42'},
-            {'user': {'first_name': 'foofoo', 'last_name': 'bar'}, 'title': 'hello world', 'content': '...'})
+            {
+                'user': {'first_name': 'foofoo', 'last_name': 'bar'},
+                'title': 'hello world',
+                'content': '...',
+            },
+        )
         assert isinstance(rv, UpdateResult)
         assert rv.modified_count == 1
 
@@ -515,7 +583,12 @@ class TestUpdate:
 
         rv = Post.replace_one(
             {'user.first_name': 'foo250'},
-            {'user': {'first_name': 'foofoo', 'last_name': 'bar'}, 'title': 'hello world', 'content': '...'})
+            {
+                'user': {'first_name': 'foofoo', 'last_name': 'bar'},
+                'title': 'hello world',
+                'content': '...',
+            },
+        )
         assert isinstance(rv, UpdateResult)
         assert rv.modified_count == 0
         assert rv.upserted_id is None
@@ -525,8 +598,12 @@ class TestUpdate:
 
         rv = Post.replace_one(
             {'user.first_name': 'foo250'},
-            {'user': {'first_name': 'foofoo', 'last_name': 'bar'}, 'title': 'hello world', 'content': '...'},
-            upsert=True
+            {
+                'user': {'first_name': 'foofoo', 'last_name': 'bar'},
+                'title': 'hello world',
+                'content': '...',
+            },
+            upsert=True,
         )
         assert isinstance(rv, UpdateResult)
         assert rv.modified_count == 0
@@ -538,8 +615,12 @@ class TestUpdate:
         with pytest.raises(ValidationError):
             Post.replace_one(
                 {'user.first_name': 'foo250'},
-                {'user': {'first_name': 42, 'last_name': 'bar'}, 'title': 'hello world', 'content': '...'},
-                upsert=True
+                {
+                    'user': {'first_name': 42, 'last_name': 'bar'},
+                    'title': 'hello world',
+                    'content': '...',
+                },
+                upsert=True,
             )
 
     def test_replace_one_bypass_validation(self, db_populated):
@@ -547,16 +628,22 @@ class TestUpdate:
 
         rv = Post.replace_one(
             {'user.first_name': 'foo250'},
-            {'user': {'first_name': 42, 'last_name': 'bar'}, 'title': 'hello world', 'content': '...'},
+            {
+                'user': {'first_name': 42, 'last_name': 'bar'},
+                'title': 'hello world',
+                'content': '...',
+            },
             upsert=True,
-            bypass_document_validation=True
+            bypass_document_validation=True,
         )
         assert isinstance(rv, UpdateResult)
 
     def test_update_one(self, db_populated):
         Post.set_db(db_populated)
 
-        rv = Post.update_one({'user.first_name': 'foo42'}, {'$set': {'title': 'hello world'}})
+        rv = Post.update_one(
+            {'user.first_name': 'foo42'}, {'$set': {'title': 'hello world'}}
+        )
         assert isinstance(rv, UpdateResult)
 
     # TODO: Ahh, writing test cases is too boring...
@@ -566,7 +653,7 @@ class TestUpdate:
         rv = Post.find_one_and_update(
             {'user.first_name': 'foo42'},
             {'$set': {'user': {'first_name': 'Foo', 'last_name': 'Bar'}}},
-            return_document=ReturnDocument.AFTER
+            return_document=ReturnDocument.AFTER,
         )
         assert rv.user.motto == 'come on'
 
@@ -580,7 +667,7 @@ class TestUpdate:
         rv = Post.find_one_and_update(
             {'user.first_name': 'foo13'},
             {'$push': {'comments': comment}},
-            return_document=ReturnDocument.AFTER
+            return_document=ReturnDocument.AFTER,
         )
         assert isinstance(rv.comments[0].created_on, datetime)
 
@@ -589,14 +676,16 @@ class TestUpdate:
         rv = Post.find_one_and_update(
             {'user.first_name': 'foo13'},
             {'$push': {'comments': {'$each': [comment1, comment2]}}},
-            return_document=ReturnDocument.AFTER
+            return_document=ReturnDocument.AFTER,
         )
         assert rv.comments[1].extra == 42
 
     def test_update_many(self, db_populated):
         Post.set_db(db_populated)
 
-        rv = Post.update_many({'user.last_name': 'bar'}, {'$set': {'title': 'hello world'}})
+        rv = Post.update_many(
+            {'user.last_name': 'bar'}, {'$set': {'title': 'hello world'}}
+        )
         assert isinstance(rv, UpdateResult)
         assert rv.modified_count == 100
 
@@ -617,7 +706,11 @@ class TestFindAndXXX:
 
         rv = Post.find_one_and_replace(
             {'user.first_name': 'foo42'},
-            {'user': {'first_name': 'foo420', 'last_name': 'bar'}, 'title': 'hello world', 'content': '...'},
+            {
+                'user': {'first_name': 'foo420', 'last_name': 'bar'},
+                'title': 'hello world',
+                'content': '...',
+            },
         )
         assert isinstance(rv, Post)
 
@@ -626,7 +719,11 @@ class TestFindAndXXX:
 
         rv = Post.find_one_and_replace(
             {'user.first_name': 'foo250'},
-            {'user': {'first_name': 'foo420', 'last_name': 'bar'}, 'title': 'hello world', 'content': '...'},
+            {
+                'user': {'first_name': 'foo420', 'last_name': 'bar'},
+                'title': 'hello world',
+                'content': '...',
+            },
         )
         assert rv is None
 
@@ -635,9 +732,13 @@ class TestFindAndXXX:
 
         rv = Post.find_one_and_replace(
             {'user.first_name': 'foo250'},
-            {'user': {'first_name': 'foo420', 'last_name': 'bar'}, 'title': 'hello world', 'content': '...'},
+            {
+                'user': {'first_name': 'foo420', 'last_name': 'bar'},
+                'title': 'hello world',
+                'content': '...',
+            },
             upsert=True,
-            return_document=ReturnDocument.AFTER
+            return_document=ReturnDocument.AFTER,
         )
         assert isinstance(rv, Post)
 
@@ -647,7 +748,11 @@ class TestFindAndXXX:
         with pytest.raises(ValidationError):
             Post.find_one_and_replace(
                 {'user.first_name': 'foo42'},
-                {'user': {'first_name': 13, 'last_name': 'bar'}, 'title': 'hello world', 'content': '...'},
+                {
+                    'user': {'first_name': 13, 'last_name': 'bar'},
+                    'title': 'hello world',
+                    'content': '...',
+                },
             )
 
     def test_find_one_and_replace_bypass_validation(self, db_populated):
@@ -655,19 +760,27 @@ class TestFindAndXXX:
 
         rv = Post.find_one_and_replace(
             {'user.first_name': 'foo13'},
-            {'user': {'first_name': 13, 'last_name': 'bar'}, 'title': 'hello world', 'content': '...'},
-            bypass_document_validation=True
+            {
+                'user': {'first_name': 13, 'last_name': 'bar'},
+                'title': 'hello world',
+                'content': '...',
+            },
+            bypass_document_validation=True,
         )
         assert isinstance(rv, Post)
 
     def test_find_one_and_update(self, db_populated):
         Post.set_db(db_populated)
 
-        rv = Post.find_one_and_update({'user.first_name': 'foo42'}, {'$set': {'user.first_name': 'foo420'}})
+        rv = Post.find_one_and_update(
+            {'user.first_name': 'foo42'}, {'$set': {'user.first_name': 'foo420'}}
+        )
         assert isinstance(rv, Post)
         assert rv.user.last_name == 'bar'
 
-        rv = Post.find_one_and_update({'user.first_name': 'foo250'}, {'$set': {'user.first_name': 'foo2500'}})
+        rv = Post.find_one_and_update(
+            {'user.first_name': 'foo250'}, {'$set': {'user.first_name': 'foo2500'}}
+        )
         assert rv is None
 
 
@@ -675,9 +788,7 @@ class TestAggregation:
     def test_aggregation(self, db_populated):
         Post.set_db(db_populated)
 
-        rv = Post.aggregate([
-            {'$sort': {'title': 1}}
-        ])
+        rv = Post.aggregate([{'$sort': {'title': 1}}])
         assert isinstance(rv, CommandCursor)
         assert next(rv)['user']['last_name'] == 'bar'
 
